@@ -2754,51 +2754,51 @@ export default function App() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className={`fixed bottom-0 left-0 right-0 p-2 sm:p-4 ${isDark ? 'bg-asphalt/90' : 'bg-white/90'} backdrop-blur-2xl border-t ${isDark ? 'border-white/5' : 'border-black/5'} z-40`}>
-        <div className="max-w-md mx-auto flex justify-between sm:justify-around items-center px-2">
+      <nav className={`fixed bottom-0 left-0 right-0 p-3 sm:p-5 ${isDark ? 'bg-asphalt/90' : 'bg-white/90'} backdrop-blur-2xl border-t ${isDark ? 'border-white/5' : 'border-black/5'} z-40`}>
+        <div className="max-w-md mx-auto flex justify-between sm:justify-around items-center px-4">
           <button 
             onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === 'dashboard' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? '' : subMutedTextColor}`}
             style={activeTab === 'dashboard' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <TrendingUp size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Painel</span>
+            <TrendingUp size={28} />
+            <span className="text-[12px] font-bold uppercase tracking-tight">Painel</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('history')}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === 'history' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'history' ? '' : subMutedTextColor}`}
             style={activeTab === 'history' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <History size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Histórico</span>
+            <History size={28} />
+            <span className="text-[12px] font-bold uppercase tracking-tight">Histórico</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('finance')}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === 'finance' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'finance' ? '' : subMutedTextColor}`}
             style={activeTab === 'finance' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <Wallet size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Finanças</span>
+            <Wallet size={28} />
+            <span className="text-[12px] font-bold uppercase tracking-tight">Finanças</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('productivity')}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === 'productivity' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'productivity' ? '' : subMutedTextColor}`}
             style={activeTab === 'productivity' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <Zap size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Produção</span>
+            <Zap size={28} />
+            <span className="text-[12px] font-bold uppercase tracking-tight">Produção</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === 'settings' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'settings' ? '' : subMutedTextColor}`}
             style={activeTab === 'settings' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <Settings size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Ajustes</span>
+            <Settings size={28} />
+            <span className="text-[12px] font-bold uppercase tracking-tight">Ajustes</span>
           </button>
         </div>
       </nav>
