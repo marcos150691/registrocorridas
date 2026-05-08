@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-asphalt: #151619;
+  --color-neon-orange: #FF6321;
+  --color-neon-yellow: #FFD700;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+.glass-card {
+  @apply backdrop-blur-lg rounded-2xl transition-colors duration-500;
+}
+
+.glass-card-dark {
+  @apply bg-white/5 border border-white/10;
+}
+
+.glass-card-light {
+  @apply bg-black/5 border border-black/10;
+}
+
+.neon-glow {
+  box-shadow: 0 0 15px rgba(255, 99, 33, 0.4);
+}
+
+.progress-bar-container {
+  @apply h-3 w-full bg-white/10 rounded-full relative;
+}
+
+.progress-bar-fill {
+  @apply h-full transition-all duration-500 ease-out rounded-full;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
