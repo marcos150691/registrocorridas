@@ -94,6 +94,7 @@ export interface AppState {
   };
   history: AppStateSnapshot[];
   dailyJourneys?: { [date: string]: { [shift: string]: number } };
+  finalizedDays?: string[];
 }
 
 export interface AppStateSnapshot {

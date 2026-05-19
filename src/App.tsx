@@ -51,6 +51,14 @@ const PRESET_SOUNDS = [
 
 const MOTORCYCLE_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2536/2536-preview.mp3';
 
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const INITIAL_STATE: AppState = {
   rides: [],
   activities: [],
@@ -59,7 +67,7 @@ const INITIAL_STATE: AppState = {
     isRunning: false,
     startTime: null,
     accumulatedTime: 0,
-    lastUpdateDate: new Date().toISOString().split('T')[0],
+    lastUpdateDate: getTodayString(),
     currentShift: 'dia inteiro',
     lastRecordedHour: 0
   },
@@ -88,6 +96,7 @@ const INITIAL_STATE: AppState = {
   },
   history: [],
   dailyJourneys: {},
+  finalizedDays: [],
   hourlyPerformance: []
 };
 
@@ -162,25 +171,27 @@ const WheelieBike = () => (
 );
 
 export default function App() {
-  const [today, setToday] = useState(() => new Date().toISOString().split('T')[0]);
+  const [today, setToday] = useState(getTodayString);
 
   // Update today periodically
   useEffect(() => {
     const timer = setInterval(() => {
-      const newToday = new Date().toISOString().split('T')[0];
+      const newToday = getTodayString();
       if (newToday !== today) setToday(newToday);
     }, 60000);
     return () => clearInterval(timer);
   }, [today]);
 
   const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migration for old state without theme
-      if (!parsed.settings.theme) {
-        parsed.settings.theme = INITIAL_STATE.settings.theme;
-      }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved && saved.startsWith('{')) {
+        const parsed = JSON.parse(saved);
+        // Migration for old state without theme
+        if (!parsed.settings) parsed.settings = INITIAL_STATE.settings;
+        if (!parsed.settings.theme) {
+          parsed.settings.theme = INITIAL_STATE.settings.theme;
+        }
       // Migration for background color
       if (!parsed.settings.theme.backgroundColor) {
         parsed.settings.theme.backgroundColor = 'dark';
@@ -208,8 +219,11 @@ export default function App() {
           }
         });
       }
-      if (!parsed.hourlyPerformance) {
+      if (parsed.hourlyPerformance === undefined) {
         parsed.hourlyPerformance = [];
+      }
+      if (parsed.finalizedDays === undefined) {
+        parsed.finalizedDays = [];
       }
       // Migration for hourly saving in workTimer
       if (parsed.workTimer && parsed.workTimer.lastRecordedHour === undefined) {
@@ -286,7 +300,11 @@ export default function App() {
       return parsed;
     }
     return INITIAL_STATE;
-  });
+  } catch (e) {
+    console.error('Error loading state:', e);
+    return INITIAL_STATE;
+  }
+});
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'finance' | 'productivity' | 'settings'>('dashboard');
   const [dashboardShift, setDashboardShift] = useState<'manhã' | 'tarde' | 'noite' | 'dia'>(() => {
@@ -555,8 +573,9 @@ export default function App() {
   }, [state.goals, state.settings, today]);
 
   const todayRides = useMemo(() => {
-    return state.rides.filter(r => r.date === today);
-  }, [state.rides, today]);
+    const isFinalized = state.finalizedDays?.includes(today);
+    return isFinalized ? [] : state.rides.filter(r => r.date === today);
+  }, [state.rides, today, state.finalizedDays]);
 
   const totalJourneyTime = useMemo(() => {
     const dailyJourneysObj = state.dailyJourneys?.[today] || {};
@@ -1051,6 +1070,34 @@ export default function App() {
     setEditingRide(null);
   };
 
+  const finalizeDay = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    
+    const isReady = (hours === 23 && minutes >= 50);
+    const isSpecial = state.workTimer?.currentShift === 'dia inteiro' || state.workTimer?.currentShift === 'noite';
+    
+    if (isSpecial && !isReady) {
+      toast.error("Turnos 'Dia Inteiro' e 'Noite' só podem ser finalizados após as 23:50.");
+      return;
+    }
+
+    setState(prev => ({
+      ...prev,
+      finalizedDays: [...(prev.finalizedDays || []), today]
+    }));
+    toast.success("Dia finalizado e enviado para o histórico!");
+  };
+
+  const undoFinalizeDay = (date: string) => {
+    setState(prev => ({
+      ...prev,
+      finalizedDays: (prev.finalizedDays || []).filter(d => d !== date)
+    }));
+    toast.success("Finalização desfeita!");
+  };
+
   const deleteRide = (id: string) => {
     setState(prev => ({
       ...prev,
@@ -1341,7 +1388,53 @@ export default function App() {
                   ))}
                 </div>
                 
-                {dashboardShift === 'dia' && (
+                {/* Finalize Day Section */}
+                {!state.finalizedDays?.includes(today) ? (
+                  (dashboardShift === 'dia' || dashboardShift === 'noite') && (
+                    <button 
+                      onClick={() => {
+                        const now = new Date();
+                        const hours = now.getHours();
+                        const minutes = now.getMinutes();
+                        const isReady = (hours === 23 && minutes >= 50);
+                        if (!isReady) {
+                          toast.error("Este turno só pode ser finalizado após as 23:50.");
+                          return;
+                        }
+                        finalizeDay();
+                      }}
+                      className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold uppercase tracking-widest text-[11px] transition-all transform active:scale-[0.98]
+                        ${(new Date().getHours() === 23 && new Date().getMinutes() >= 50) 
+                          ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/30 ring-2 ring-orange-500/50' 
+                          : isDark ? 'bg-white/5 text-white/20 border border-white/5' : 'bg-black/5 text-black/20 border border-black/5'}`}
+                    >
+                      <CheckCircle2 size={18} />
+                      Finalizar Entradas ({dashboardShift === 'dia' ? 'Dia Inteiro' : 'Noite'})
+                    </button>
+                  )
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`p-6 ${isDark ? 'bg-green-500/10' : 'bg-green-50'} border border-green-500/20 rounded-3xl text-center space-y-3`}
+                  >
+                    <div className="w-12 h-12 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <CheckCircle2 size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-widest text-green-500">Dia Finalizado</p>
+                      <p className={`${subMutedTextColor} text-[10px] mt-1`}>Todos os dados deste dia foram arquivados com sucesso.</p>
+                    </div>
+                    <button 
+                      onClick={() => undoFinalizeDay(today)}
+                      className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
+                    >
+                      Reabrir Dia
+                    </button>
+                  </motion.div>
+                )}
+
+                {dashboardShift === 'dia' && !state.finalizedDays?.includes(today) && (
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
                     <span className="text-[10px] font-mono uppercase tracking-widest opacity-50">Registrar em:</span>
                     <div className="flex gap-2 flex-1">
@@ -1705,46 +1798,48 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className={`text-sm font-bold uppercase tracking-widest ${mutedTextColor}`}>Corridas de Hoje</h3>
-                <div className="flex items-center gap-2">
-                  <form onSubmit={handleQuickValueSubmit} className="flex items-center gap-1">
-                    <input 
-                      type="number" 
-                      inputMode="decimal"
-                      placeholder="R$ Rápido"
-                      value={quickValue}
-                      onChange={(e) => setQuickValue(e.target.value)}
-                      className={`w-24 h-8 px-2 text-xs font-mono font-bold rounded-lg border ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30 transition-colors`}
-                    />
+                {!state.finalizedDays?.includes(today) && (
+                  <div className="flex items-center gap-2">
+                    <form onSubmit={handleQuickValueSubmit} className="flex items-center gap-1">
+                      <input 
+                        type="number" 
+                        inputMode="decimal"
+                        placeholder="R$ Rápido"
+                        value={quickValue}
+                        onChange={(e) => setQuickValue(e.target.value)}
+                        className={`w-24 h-8 px-2 text-xs font-mono font-bold rounded-lg border ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30 transition-colors`}
+                      />
+                      <button 
+                        type="submit"
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                        title="Adicionar rápido"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </form>
+                    <div className="w-px h-4 bg-white/10 mx-1" />
+                    {state.history.length > 0 && (
+                      <button 
+                        onClick={undo}
+                        className={`flex items-center gap-1 text-xs font-bold uppercase tracking-tighter ${subMutedTextColor} hover:text-white transition-colors`}
+                        title="Desfazer última ação"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                    )}
                     <button 
-                      type="submit"
-                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                      title="Adicionar rápido"
+                      onClick={() => {
+                        setNewRideShift(registrationShift);
+                        setIsAddingRide(true);
+                      }}
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={getStyle(state.settings.theme.headerColor)}
+                      title="Adicionar detalhado"
                     >
-                      <Plus size={16} />
+                      <Plus size={16} className="text-white" />
                     </button>
-                  </form>
-                  <div className="w-px h-4 bg-white/10 mx-1" />
-                  {state.history.length > 0 && (
-                    <button 
-                      onClick={undo}
-                      className={`flex items-center gap-1 text-xs font-bold uppercase tracking-tighter ${subMutedTextColor} hover:text-white transition-colors`}
-                      title="Desfazer última ação"
-                    >
-                      <RotateCcw size={14} />
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => {
-                      setNewRideShift(registrationShift);
-                      setIsAddingRide(true);
-                    }}
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={getStyle(state.settings.theme.headerColor)}
-                    title="Adicionar detalhado"
-                  >
-                    <Plus size={16} className="text-white" />
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -2754,51 +2849,51 @@ export default function App() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className={`fixed bottom-0 left-0 right-0 p-3 sm:p-4 ${isDark ? 'bg-asphalt/90' : 'bg-white/90'} backdrop-blur-2xl border-t ${isDark ? 'border-white/5' : 'border-black/5'} z-40`}>
-        <div className="max-w-md mx-auto flex overflow-x-auto scrollbar-hide items-center justify-between gap-8 px-4">
+      <nav className={`fixed bottom-0 left-0 right-0 p-3 ${isDark ? 'bg-asphalt/90' : 'bg-white/90'} backdrop-blur-2xl border-t ${isDark ? 'border-white/5' : 'border-black/5'} z-40`}>
+        <div className="max-w-md mx-auto flex overflow-x-auto scrollbar-hide items-center gap-8 px-4 py-1">
           <button 
             onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center gap-1 transition-colors flex-shrink-0 ${activeTab === 'dashboard' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'dashboard' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'dashboard' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
             <TrendingUp size={28} />
-            <span className="text-[12px] font-bold uppercase tracking-tight">Painel</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Painel</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('history')}
-            className={`flex flex-col items-center gap-1 transition-colors flex-shrink-0 ${activeTab === 'history' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'history' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'history' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
             <History size={28} />
-            <span className="text-[12px] font-bold uppercase tracking-tight">Histórico</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Histórico</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('finance')}
-            className={`flex flex-col items-center gap-1 transition-colors flex-shrink-0 ${activeTab === 'finance' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'finance' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'finance' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
             <Wallet size={28} />
-            <span className="text-[12px] font-bold uppercase tracking-tight">Finanças</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Finanças</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('productivity')}
-            className={`flex flex-col items-center gap-1 transition-colors flex-shrink-0 ${activeTab === 'productivity' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'productivity' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'productivity' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
             <Zap size={28} />
-            <span className="text-[12px] font-bold uppercase tracking-tight">Produção</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Produção</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex flex-col items-center gap-1 transition-colors flex-shrink-0 ${activeTab === 'settings' ? '' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'settings' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'settings' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
             <Settings size={28} />
-            <span className="text-[12px] font-bold uppercase tracking-tight">Ajustes</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Ajustes</span>
           </button>
         </div>
       </nav>
