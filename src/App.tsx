@@ -1700,7 +1700,7 @@ export default function App() {
                           </button>
                         )}
                       </div>
-                      <div className="mt-1">
+                      <div className="mt-1 flex flex-col items-center gap-1 sm:flex-row sm:gap-2">
                         {targetValue < targetValueGoal ? (
                           <span className="text-white font-bold text-xl">
                             Faltam R$ {(targetValueGoal - targetValue).toFixed(2)}
@@ -1708,6 +1708,16 @@ export default function App() {
                         ) : (
                           <span className="text-green-500 font-bold">Meta Batida! (+R$ {(targetValue - targetValueGoal).toFixed(2)})</span>
                         )}
+                        <span className="text-white/20 hidden sm:inline">•</span>
+                        <div className="text-xs sm:text-sm font-sans">
+                          {targetCount < targetCountGoal ? (
+                            <span className="text-white/70">
+                              (Faltam <span className="text-white font-bold">{targetCountGoal - targetCount}</span> corridas)
+                            </span>
+                          ) : (
+                            <span className="text-green-500/80 font-bold">(Meta de corridas batida!)</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <span>R$ {state.settings.enableShiftTracking ? todayStats.currentShiftGoal.valueGoal : currentGoal.valueGoal}</span>
