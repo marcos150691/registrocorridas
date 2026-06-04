@@ -87,6 +87,7 @@ export interface AppState {
       headerColor: string;
       countBarColor: string;
       valueBarColor: string;
+      cardBgColor?: string;
       backgroundColor: 'dark' | 'light';
       customBgColor?: string;
       bgImage?: string;

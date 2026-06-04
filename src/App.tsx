@@ -93,6 +93,7 @@ const INITIAL_STATE: AppState = {
       headerColor: '#FF6321', // Neon Orange
       countBarColor: '#FF6321',
       valueBarColor: '#FFD700', // Neon Yellow
+      cardBgColor: '',
       backgroundColor: 'dark',
       fontSize: 16,
       fontFamily: '"Inter", sans-serif'
@@ -197,6 +198,9 @@ export default function App() {
         if (!parsed.settings) parsed.settings = INITIAL_STATE.settings;
         if (!parsed.settings.theme) {
           parsed.settings.theme = INITIAL_STATE.settings.theme;
+        }
+        if (parsed.settings.theme.cardBgColor === undefined) {
+          parsed.settings.theme.cardBgColor = '';
         }
       // Migration for background color
       if (!parsed.settings.theme.backgroundColor) {
@@ -1268,9 +1272,26 @@ export default function App() {
 
   const bgColor = state.settings.theme.customBgColor || (isDark ? '#0F1115' : '#F8FAFC');
   const textColor = isDark ? 'text-white' : 'text-slate-950';
-  const mutedTextColor = isDark ? 'text-white/70' : 'text-slate-700 font-semibold';
-  const subMutedTextColor = isDark ? 'text-white/50' : 'text-slate-500 font-medium';
-  const cardClass = isDark ? 'glass-card glass-card-dark' : 'glass-card glass-card-light shadow-md shadow-slate-200/50 border border-slate-200 bg-white/80';
+  const mutedTextColor = isDark ? 'text-white/70' : 'text-slate-900 font-bold';
+  const subMutedTextColor = isDark ? 'text-white/50' : 'text-slate-700 font-semibold';
+  const cardClass = state.settings.theme.cardBgColor
+    ? 'custom-card'
+    : isDark 
+      ? 'glass-card glass-card-dark' 
+      : bgColor.toUpperCase() === '#FFFFFF' 
+        ? 'bg-slate-50/95 border-2 border-slate-200/90 shadow-md shadow-slate-200/30 p-5 rounded-2xl'
+        : 'bg-white border-2 border-slate-200/90 shadow-md shadow-slate-200/20 p-5 rounded-2xl';
+
+  const customCardVariables = state.settings.theme.cardBgColor
+    ? {
+        '--card-bg': state.settings.theme.cardBgColor,
+        '--card-border': state.settings.theme.cardBgColor.startsWith('linear-gradient') ? 'transparent' : isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(148, 163, 184, 0.35)',
+        '--card-border-width': state.settings.theme.cardBgColor.startsWith('linear-gradient') ? '0px' : isDark ? '1px' : '2px',
+        '--card-shadow': isDark 
+          ? '0 4px 10px rgba(0,0,0,0.3)'
+          : '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
+      }
+    : {};
 
   const mainBgStyle = {
     backgroundColor: bgColor,
@@ -1279,7 +1300,8 @@ export default function App() {
     backgroundPosition: 'center',
     backgroundAttachment: 'fixed' as const,
     fontSize: state.settings.theme.fontSize ? `${state.settings.theme.fontSize}px` : '16px',
-    fontFamily: state.settings.theme.fontFamily || '"Inter", sans-serif'
+    fontFamily: state.settings.theme.fontFamily || '"Inter", sans-serif',
+    ...customCardVariables
   };
 
   const getStyle = (color: string, isText = false) => {
@@ -1371,7 +1393,7 @@ export default function App() {
                 <div className="flex gap-1.5">
                   <button 
                     onClick={resetTimer}
-                    className={`p-2 rounded-xl ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${subMutedTextColor} transition-colors`}
+                    className={`p-2 rounded-xl ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200 border border-slate-300'} ${subMutedTextColor} transition-colors`}
                     title="Reiniciar (Limpa sem salvar)"
                   >
                     <RotateCcw size={16} />
@@ -1496,7 +1518,7 @@ export default function App() {
                       className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold uppercase tracking-widest text-[11px] transition-all transform active:scale-[0.98]
                         ${(new Date().getHours() === 23 && new Date().getMinutes() >= 50) 
                           ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/30 ring-2 ring-orange-500/50' 
-                          : isDark ? 'bg-white/5 text-white/20 border border-white/5' : 'bg-black/5 text-black/20 border border-black/5'}`}
+                          : isDark ? 'bg-white/5 text-white/20 border border-white/5' : 'bg-slate-100 text-slate-400 border border-slate-300'}`}
                     >
                       <CheckCircle2 size={18} />
                       Finalizar Entradas ({dashboardShift === 'dia' ? 'Dia Inteiro' : 'Noite'})
@@ -1535,7 +1557,7 @@ export default function App() {
                           className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${
                             registrationShift === s 
                               ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
-                              : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-slate-100 text-slate-705 border-slate-200 hover:bg-slate-200'
+                              : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                           }`}
                         >
                           {s}
@@ -1867,14 +1889,14 @@ export default function App() {
                         placeholder="R$"
                         value={quickValue}
                         onChange={(e) => setQuickValue(e.target.value)}
-                        className={`w-full py-3 px-2 text-lg font-mono font-bold rounded-lg border ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30 transition-colors placeholder:text-[10px]`}
+                        className={`w-full py-3 px-2 text-lg font-mono font-bold rounded-lg border ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-white/30' : 'bg-slate-100 border-slate-300 text-slate-900 focus:bg-white focus:border-slate-500'} focus:outline-none transition-colors placeholder:text-[10px]`}
                       />
                     </form>
                     {[4, 5, 6, 7, 8, 9, 10].map(val => (
                       <button 
                         key={val}
                         onClick={() => quickAddRide(val, `Corrida R$ ${val}`)}
-                        className={`py-3 px-1 rounded-lg border border-white/10 text-xl font-bold uppercase tracking-widest hover:bg-white/5 transition-colors`}
+                        className={`py-3 px-1 rounded-lg border text-xl font-bold uppercase tracking-widest transition-colors ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-100 active:bg-slate-200 text-slate-800 shadow-sm'}`}
                         style={getStyle(state.settings.theme.valueBarColor, true)}
                       >
                         +R$ {val}
@@ -1905,7 +1927,7 @@ export default function App() {
                             });
                           }
                         }}
-                        className={`ml-2 p-1.5 rounded-xl ${subMutedTextColor} hover:text-red-500 hover:bg-red-500/10 active:scale-95 transition-all flex items-center justify-center bg-white/5 border border-white/5`}
+                        className={`ml-2 p-1.5 rounded-xl ${subMutedTextColor} hover:text-red-500 hover:bg-red-500/10 active:scale-95 transition-all flex items-center justify-center border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200 hover:bg-slate-200'}`}
                         title="Zerar registros de hoje"
                       >
                         <Trash2 size={16} />
@@ -1919,7 +1941,7 @@ export default function App() {
                     {dashboardShift === 'dia' ? 'Total Trabalhado Hoje' : `Jornada no turno ${dashboardShift}`}
                   </p>
                 </div>
-                <div className={`p-4 rounded-3xl ${state.workTimer?.isRunning ? 'bg-green-500/20 text-green-500' : isDark ? 'bg-white/5 text-white/40' : 'bg-black/5 text-black/40'}`}>
+                <div className={`p-4 rounded-3xl ${state.workTimer?.isRunning ? 'bg-green-500/20 text-green-500 border border-green-500/20' : isDark ? 'bg-white/5 text-white/40 border border-white/5' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                   <Clock size={40} strokeWidth={state.workTimer?.isRunning ? 2.5 : 2} />
                 </div>
               </div>
@@ -1949,21 +1971,21 @@ export default function App() {
                         placeholder="R$ Rápido"
                         value={quickValue}
                         onChange={(e) => setQuickValue(e.target.value)}
-                        className={`w-24 h-8 px-2 text-xs font-mono font-bold rounded-lg border ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30 transition-colors`}
+                        className={`w-24 h-8 px-2 text-xs font-mono font-bold rounded-lg border ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-white/30' : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-slate-500'} focus:outline-none transition-colors`}
                       />
                       <button 
                         type="submit"
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                        className={`p-1.5 rounded-lg transition-colors border ${isDark ? 'bg-white/10 hover:bg-white/20 border-white/5' : 'bg-slate-100 hover:bg-slate-200 border-slate-300'}`}
                         title="Adicionar rápido"
                       >
                         <Plus size={16} />
                       </button>
                     </form>
-                    <div className="w-px h-4 bg-white/10 mx-1" />
+                    <div className={`w-px h-4 mx-1 ${isDark ? 'bg-white/10' : 'bg-slate-350'}`} />
                     {state.history.length > 0 && (
                       <button 
                         onClick={undo}
-                        className={`flex items-center gap-1 text-xs font-bold uppercase tracking-tighter ${subMutedTextColor} hover:text-white transition-colors`}
+                        className={`flex items-center gap-1 text-xs font-bold uppercase tracking-tighter ${subMutedTextColor} ${isDark ? 'hover:text-white' : 'hover:text-slate-900'} transition-colors`}
                         title="Desfazer última ação"
                       >
                         <RotateCcw size={14} />
@@ -1986,7 +2008,7 @@ export default function App() {
 
               <div className="space-y-3">
                 {todayRides.filter(r => !state.settings.enableShiftTracking || dashboardShift === 'dia' || r.shift === dashboardShift).length === 0 ? (
-                  <div className={`${cardClass} p-8 text-center border-dashed border-white/5`}>
+                  <div className={`${cardClass} p-8 text-center border-dashed border-2 ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                     <p className={`${subMutedTextColor} text-sm italic`}>Nenhuma corrida registrada {dashboardShift !== 'dia' ? `no turno ${dashboardShift}` : 'hoje'}.</p>
                   </div>
                 ) : (
@@ -1998,7 +2020,7 @@ export default function App() {
                       className={`${cardClass} p-4 flex justify-between items-center`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-white/5 text-white/40' : 'bg-black/5 text-black/40'} flex items-center justify-center`}>
+                        <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-600 border border-slate-200'} flex items-center justify-center`}>
                           <Bike size={20} />
                         </div>
                         <div>
@@ -2041,15 +2063,15 @@ export default function App() {
             <div className="flex justify-between items-center">
               <h3 className={`text-sm font-bold uppercase tracking-widest ${mutedTextColor}`}>Histórico de Atividade</h3>
               {state.settings.enableShiftTracking && (
-                <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+                <div className={`flex gap-1 p-1 rounded-lg border ${isDark ? 'bg-white/5 ' : 'bg-slate-100 border-slate-200 shadow-sm'}`}>
                   {(['all', 'manhã', 'tarde', 'noite'] as const).map(s => (
                     <button
                       key={s}
                       onClick={() => setHistoryShift(s)}
                       className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-tighter transition-all ${
                         historyShift === s 
-                          ? isDark ? 'bg-white text-black' : 'bg-black text-white'
-                          : isDark ? 'text-white/40 hover:text-white' : 'text-black/40 hover:text-black'
+                          ? isDark ? 'bg-white text-black' : 'bg-slate-900 text-white shadow-sm'
+                          : isDark ? 'text-white/40 hover:text-white' : 'text-slate-600 hover:text-slate-950 font-bold'
                       }`}
                     >
                       {s === 'all' ? 'Tudo' : s}
@@ -2088,7 +2110,7 @@ export default function App() {
 
                 return (
                   <div key={date} className="space-y-3">
-                    <div className="flex justify-between items-end px-2 border-b border-white/10 pb-2">
+                    <div className={`flex justify-between items-end px-2 border-b pb-2 ${isDark ? 'border-white/10' : 'border-slate-300'}`}>
                       <div className="space-y-0.5">
                         <p className={`text-sm font-mono ${subMutedTextColor} uppercase tracking-widest`}>
                           {new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -2113,22 +2135,22 @@ export default function App() {
                                     <span 
                                       key={s} 
                                       className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-md border flex items-center gap-1
-                                        ${isDark ? 'bg-white/5 border-white/5 text-white/60' : 'bg-black/5 border-black/5 text-black/60'}`}
+                                        ${isDark ? 'bg-white/5 border-white/5 text-white/60' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
                                       <span className="capitalize">{s}:</span> 
-                                      <strong className={isDark ? 'text-white/80' : 'text-black/80'}>{formatElapsedTime(sTime)}</strong>
+                                      <strong className={isDark ? 'text-white/80' : 'text-slate-950 font-bold'}>{formatElapsedTime(sTime)}</strong>
                                     </span>
                                   );
                                 })}
                                 {(((dailyJourneysObj['dia inteiro'] || 0) + (date === today && state.workTimer?.currentShift === 'dia inteiro' ? elapsedTime : 0)) > 0) ? (
                                   <span 
                                     className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-md border flex items-center gap-1
-                                      ${isDark ? 'bg-white/5 border-white/5 text-white/60' : 'bg-black/5 border-black/5 text-black/60'}`}
+                                      ${isDark ? 'bg-white/5 border-white/5 text-white/60' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
                                     <span>Integral:</span> 
-                                    <strong className={isDark ? 'text-white/80' : 'text-black/80'}>
+                                    <strong className={isDark ? 'text-white/80' : 'text-slate-950 font-bold'}>
                                       {formatElapsedTime((dailyJourneysObj['dia inteiro'] || 0) + (date === today && state.workTimer?.currentShift === 'dia inteiro' ? elapsedTime : 0))}
                                     </strong>
                                   </span>
@@ -2147,9 +2169,9 @@ export default function App() {
                     <div className="space-y-4">
                       {/* Special case for 'dia inteiro' journey if showing all */}
                       {historyShift === 'all' && (dailyJourneysObj['dia inteiro'] || (date === today && state.workTimer?.currentShift === 'dia inteiro' ? elapsedTime : 0)) ? (
-                        <div className={`px-3 py-2.5 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'} flex justify-between items-center border-l-4 border-green-500 group`}>
+                        <div className={`px-3 py-2.5 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200 shadow-sm'} flex justify-between items-center border-l-4 border-green-500 group`}>
                           <div className="flex flex-col">
-                            <span className={`text-[10px] font-bold uppercase tracking-[0.2em] opacity-40`}>Jornada</span>
+                            <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'opacity-40' : 'text-slate-600 font-bold'}`}>Jornada</span>
                             <span className={`text-xs font-bold uppercase tracking-widest ${subMutedTextColor}`}>Dia Inteiro</span>
                           </div>
                           <div className="flex items-center gap-3">
@@ -2161,7 +2183,7 @@ export default function App() {
                             {dailyJourneysObj['dia inteiro'] && (
                               <button 
                                 onClick={() => deleteJourneyTime(date, 'dia inteiro')}
-                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all bg-white/5 border border-white/5 shadow-sm active:scale-90"
+                                className={`p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all shadow-sm active:scale-90 border-2 ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-300 hover:bg-slate-200'}`}
                                 title="Apagar tempo registrado"
                               >
                                 <Trash2 size={14} />
@@ -2181,7 +2203,7 @@ export default function App() {
 
                         return (
                           <div key={shift} className="space-y-2">
-                            <div className={`flex justify-between items-center px-3 py-2.5 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'} border-l-2 border-white/10 group`}>
+                            <div className={`flex justify-between items-center px-3 py-2.5 rounded-xl border-l-2 ${isDark ? 'bg-white/5 border-white/10 border-l-white/10' : 'bg-slate-100/90 border border-slate-300 border-l-slate-400 shadow-sm'} group`}>
                               <div className="flex flex-col">
                                 <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${subMutedTextColor}`}>{shift}</span>
                                 {shiftJourneyTime > 0 && (
@@ -2193,7 +2215,7 @@ export default function App() {
                                     {(dailyJourneysObj[shift]) && (
                                       <button 
                                         onClick={() => deleteJourneyTime(date, shift)}
-                                        className="p-1 text-red-500 hover:bg-red-500/10 rounded transition-all bg-white/5 border border-white/5 active:scale-90"
+                                        className={`p-1 text-red-500 hover:bg-red-500/10 rounded transition-all active:scale-90 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-300 hover:bg-slate-200'}`}
                                         title="Apagar tempo registrado"
                                       >
                                         <Trash2 size={10} />
@@ -2203,8 +2225,8 @@ export default function App() {
                                 )}
                               </div>
                               <div className="text-right">
-                                <span className={`text-[8px] font-bold uppercase tracking-widest ${subMutedTextColor} opacity-40 block mb-0.5`}>Ganhos</span>
-                                <span className="text-xs font-mono font-bold opacity-80">R$ {shiftTotal.toFixed(2)}</span>
+                                <span className={`text-[8px] font-bold uppercase tracking-widest ${subMutedTextColor} ${isDark ? 'opacity-40' : 'text-slate-600 font-bold'} block mb-0.5`}>Ganhos</span>
+                                <span className={`text-xs font-mono font-bold ${isDark ? 'opacity-80' : 'text-slate-900'}`}>R$ {shiftTotal.toFixed(2)}</span>
                               </div>
                             </div>
                             
@@ -2212,7 +2234,7 @@ export default function App() {
                               {shiftRides.map((ride, idx) => (
                                 <div 
                                   key={ride.id} 
-                                  className={`p-4 flex justify-between items-center ${idx !== shiftRides.length - 1 ? isDark ? 'border-b border-white/5' : 'border-b border-black/5' : ''}`}
+                                  className={`p-4 flex justify-between items-center ${idx !== shiftRides.length - 1 ? isDark ? 'border-b border-white/5' : 'border-b border-slate-200' : ''}`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={subMutedTextColor}><Bike size={16} /></div>
@@ -2327,7 +2349,7 @@ export default function App() {
                             type="number"
                             value={tempMonthlyGoal}
                             onChange={(e) => setTempMonthlyGoal(e.target.value)}
-                            className={`w-28 p-2 text-base font-mono font-bold rounded border ${isDark ? 'bg-white/5 border-white/20 text-white' : 'bg-slate-100 border-slate-250 text-slate-900'} focus:outline-none focus:border-slate-400`}
+                            className={`w-28 p-2 text-base font-mono font-bold rounded border ${isDark ? 'bg-white/5 border-white/20 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} focus:outline-none focus:border-slate-400`}
                             autoFocus
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
@@ -2378,7 +2400,7 @@ export default function App() {
                         {monthlyStats.progress > 0 && <WheelieBike />}
                       </motion.div>
                     </div>
-                    <div className="flex justify-between text-xs font-mono uppercase tracking-tighter opacity-60">
+                    <div className={`flex justify-between text-xs font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-slate-700 font-bold'}`}>
                       <span>{monthlyStats.progress.toFixed(1)}% Concluído</span>
                       <span>Faltam R$ {monthlyStats.remaining.toFixed(2)}</span>
                     </div>
@@ -2386,7 +2408,7 @@ export default function App() {
                 </div>
 
                 {/* Weekly Section */}
-                <div className="space-y-3 relative z-10 border-t border-white/5 pt-6">
+                <div className={`space-y-3 relative z-10 border-t pt-6 ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                   <div className="flex justify-between items-end">
                     <div>
                       <p className={`${mutedTextColor} text-xs uppercase font-mono tracking-widest mb-1`}>Meta Semanal</p>
@@ -2406,7 +2428,7 @@ export default function App() {
                         animate={{ width: `${monthlyStats.weeklyNeeded > 0 ? Math.min(100, (financeStats.week.totalRecebido / monthlyStats.weeklyNeeded) * 100) : (monthlyStats.remaining === 0 ? 100 : 0)}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] font-mono uppercase tracking-tighter opacity-60">
+                    <div className={`flex justify-between text-[10px] font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-slate-700 font-bold'}`}>
                       <span>{monthlyStats.weeklyNeeded > 0 ? Math.min(100, (financeStats.week.totalRecebido / monthlyStats.weeklyNeeded) * 100).toFixed(1) : (monthlyStats.remaining === 0 ? '100' : '0')}% da Meta Semanal</span>
                       <span>Objetivo: R$ {monthlyStats.weeklyNeeded.toFixed(2)}</span>
                     </div>
@@ -2414,7 +2436,7 @@ export default function App() {
                 </div>
 
                 {/* Daily Section */}
-                <div className="space-y-3 relative z-10 border-t border-white/5 pt-6">
+                <div className={`space-y-3 relative z-10 border-t pt-6 ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                   <div className="flex justify-between items-end">
                     <div>
                       <p className={`${mutedTextColor} text-xs uppercase font-mono tracking-widest mb-1`}>Meta Diária</p>
@@ -2434,7 +2456,7 @@ export default function App() {
                         animate={{ width: `${monthlyStats.dailyNeeded > 0 ? Math.min(100, (financeStats.day.totalRecebido / monthlyStats.dailyNeeded) * 100) : (monthlyStats.remaining === 0 ? 100 : 0)}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] font-mono uppercase tracking-tighter opacity-60">
+                    <div className={`flex justify-between text-[10px] font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-slate-700 font-bold'}`}>
                       <span>{monthlyStats.dailyNeeded > 0 ? Math.min(100, (financeStats.day.totalRecebido / monthlyStats.dailyNeeded) * 100).toFixed(1) : (monthlyStats.remaining === 0 ? '100' : '0')}% da Meta Diária</span>
                       <span>Objetivo: R$ {monthlyStats.dailyNeeded.toFixed(2)}</span>
                     </div>
@@ -2448,7 +2470,7 @@ export default function App() {
               {(['day', 'week', 'month'] as const).map((period) => (
                 <div key={period} className={`${cardClass} p-6 space-y-4`}>
                   <div className="flex justify-between items-center">
-                    <h4 className="text-base font-bold uppercase tracking-widest opacity-60">
+                    <h4 className={`text-base font-bold uppercase tracking-widest ${isDark ? 'opacity-60' : 'text-slate-800'}`}>
                       {period === 'day' ? 'Hoje' : period === 'week' ? 'Esta Semana' : 'Este Mês'}
                     </h4>
                     <div className="flex gap-4">
@@ -2463,21 +2485,21 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                  <div className={`grid grid-cols-3 gap-2 pt-2 border-t ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                     {(['Uber', '99', 'Outros'] as const).map((platform) => (
                       <div key={platform} className="space-y-1">
-                        <p className="text-sm uppercase font-mono font-bold tracking-tighter opacity-80">{platform}</p>
+                        <p className={`text-sm uppercase font-mono font-bold tracking-tighter ${isDark ? 'opacity-80' : 'text-slate-700'}`}>{platform}</p>
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-green-500/90">+R$ {(financeStats[period].recebimentoManual[platform] + (platform === 'Outros' ? financeStats[period].faturamento : 0)).toFixed(0)}</span>
-                          <span className="text-sm font-bold text-red-500/90">-R$ {financeStats[period].despesa[platform].toFixed(0)}</span>
+                          <span className={`text-sm font-bold ${isDark ? 'text-green-400/90' : 'text-green-600'}`}>+R$ {(financeStats[period].recebimentoManual[platform] + (platform === 'Outros' ? financeStats[period].faturamento : 0)).toFixed(0)}</span>
+                          <span className={`text-sm font-bold ${isDark ? 'text-red-400/90' : 'text-red-600'}`}>-R$ {financeStats[period].despesa[platform].toFixed(0)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="pt-2 border-t border-white/5 flex justify-between items-center">
-                    <p className="text-base font-bold uppercase tracking-widest opacity-40">Saldo Líquido</p>
-                    <p className={`text-3xl font-bold font-mono ${(financeStats[period].totalRecebido - financeStats[period].despesa.total) >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                  <div className={`pt-2 border-t flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
+                    <p className={`text-base font-bold uppercase tracking-widest ${isDark ? 'opacity-40' : 'text-slate-700'}`}>Saldo Líquido</p>
+                    <p className={`text-3xl font-bold font-mono ${(financeStats[period].totalRecebido - financeStats[period].despesa.total) >= 0 ? isDark ? 'text-blue-400' : 'text-blue-600' : isDark ? 'text-red-400' : 'text-red-600'}`}>
                       R$ {(financeStats[period].totalRecebido - financeStats[period].despesa.total).toFixed(2)}
                     </p>
                   </div>
@@ -2490,7 +2512,7 @@ export default function App() {
               <h3 className={`text-lg font-bold uppercase tracking-widest ${mutedTextColor}`}>Atividades Recentes</h3>
               <div className="space-y-3">
                 {state.activities.length === 0 ? (
-                  <div className={`${cardClass} p-12 text-center border-dashed border-white/5`}>
+                  <div className={`${cardClass} p-12 text-center border-dashed border-2 ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                     <Wallet className={`mx-auto ${subMutedTextColor} mb-4`} size={48} />
                     <p className={`${subMutedTextColor} text-base italic`}>Nenhuma atividade financeira registrada.</p>
                   </div>
@@ -2503,7 +2525,7 @@ export default function App() {
                       className={`${cardClass} p-5 flex justify-between items-center`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full ${activity.type === 'recebimento' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} flex items-center justify-center`}>
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activity.type === 'recebimento' ? isDark ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-800 border border-green-200' : isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-800 border border-red-200'}`}>
                           {activity.type === 'recebimento' ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
                         </div>
                         <div>
@@ -2514,7 +2536,7 @@ export default function App() {
                         </div>
                       </div>
                       <div className="text-right flex items-center gap-4">
-                        <p className={`font-mono font-bold text-lg mr-2 ${activity.type === 'recebimento' ? 'text-green-500' : 'text-red-500'}`}>
+                        <p className={`font-mono font-bold text-lg mr-2 ${activity.type === 'recebimento' ? isDark ? 'text-green-400' : 'text-green-700' : isDark ? 'text-red-400' : 'text-red-700'}`}>
                           {activity.type === 'recebimento' ? '+' : '-'} R$ {activity.value.toFixed(2)}
                         </p>
                         <button 
@@ -3066,6 +3088,48 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {/* Card Background Color */}
+              <div className="space-y-3">
+                <label className={`text-sm font-mono ${subMutedTextColor} uppercase tracking-widest block`}>Cor dos Quadrados de Informações (Cards)</label>
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    onClick={() => updateTheme('cardBgColor', '')}
+                    className={`px-3 py-1.5 rounded-lg border-2 text-[10px] font-bold uppercase tracking-wider transition-all
+                      ${(state.settings.theme.cardBgColor || '') === '' 
+                        ? isDark ? 'border-white bg-white/20 text-white font-bold' : 'border-black bg-slate-200 text-black font-bold' 
+                        : isDark ? 'border-transparent bg-white/5 text-white/50 hover:text-white' : 'border-transparent bg-slate-100 text-slate-700 hover:text-slate-950 shadow-sm'
+                      }`}
+                  >
+                    Próprio do Tema (Opaco/Vidro)
+                  </button>
+                  {PRESET_COLORS.map(color => (
+                    <button 
+                      key={color.value}
+                      onClick={() => updateTheme('cardBgColor', color.value)}
+                      className={`w-8 h-8 rounded-full border-2 transition-transform ${(state.settings.theme.cardBgColor || '') === color.value ? isDark ? 'border-white scale-110' : 'border-black scale-110' : 'border-transparent'}`}
+                      style={getStyle(color.value)}
+                      title={color.name}
+                    />
+                  ))}
+                  {[
+                    { name: 'Cinza Escuro Prata', value: 'rgba(30, 41, 59, 0.95)' },
+                    { name: 'Azul Abissal Escuro', value: 'rgba(15, 23, 42, 0.95)' },
+                    { name: 'Verde Premium Escuro', value: 'rgba(6, 78, 59, 0.95)' },
+                    { name: 'Roxo Vinho', value: 'rgba(88, 28, 135, 0.95)' },
+                    { name: 'Verde Folha Seca', value: 'rgba(20, 83, 45, 0.95)' },
+                    { name: 'Laranja Crepúsculo', value: 'rgba(124, 45, 18, 0.95)' },
+                  ].map(color => (
+                    <button 
+                      key={color.value}
+                      onClick={() => updateTheme('cardBgColor', color.value)}
+                      className={`w-8 h-8 rounded-full border-2 transition-transform ${(state.settings.theme.cardBgColor || '') === color.value ? isDark ? 'border-white scale-110' : 'border-black scale-110' : 'border-transparent'}`}
+                      style={getStyle(color.value)}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className={`${cardClass} p-6`}>
@@ -3081,51 +3145,51 @@ export default function App() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className={`fixed bottom-0 left-0 right-0 p-3 ${isDark ? 'bg-asphalt/90' : 'bg-white/90'} backdrop-blur-2xl border-t ${isDark ? 'border-white/5' : 'border-black/5'} z-40`}>
-        <div className="max-w-md mx-auto flex overflow-x-auto scrollbar-hide items-center gap-8 px-4 py-1">
+      <nav className={`fixed bottom-0 left-0 right-0 pb-[max(12px,env(safe-area-inset-bottom,16px))] pt-3 px-3 ${isDark ? 'bg-asphalt/95' : 'bg-white/95'} backdrop-blur-2xl border-t ${isDark ? 'border-white/5' : 'border-black/5'} z-40 shadow-2xl`}>
+        <div className="max-w-md mx-auto flex items-center justify-between gap-1 w-full relative z-10">
           <button 
             onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'dashboard' ? 'scale-110' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[56px] ${activeTab === 'dashboard' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'dashboard' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <TrendingUp size={28} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Painel</span>
+            <TrendingUp size={24} />
+            <span className="text-[9px] font-bold uppercase tracking-tight">Painel</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('history')}
-            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'history' ? 'scale-110' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[56px] ${activeTab === 'history' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'history' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <History size={28} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Histórico</span>
+            <History size={24} />
+            <span className="text-[9px] font-bold uppercase tracking-tight">Histórico</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('finance')}
-            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'finance' ? 'scale-110' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[56px] ${activeTab === 'finance' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'finance' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <Wallet size={28} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Finanças</span>
+            <Wallet size={24} />
+            <span className="text-[9px] font-bold uppercase tracking-tight">Finanças</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('productivity')}
-            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'productivity' ? 'scale-110' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[56px] ${activeTab === 'productivity' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'productivity' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <Zap size={28} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Produção</span>
+            <Zap size={24} />
+            <span className="text-[9px] font-bold uppercase tracking-tight">Produção</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[64px] ${activeTab === 'settings' ? 'scale-110' : subMutedTextColor}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-shrink-0 min-w-[56px] ${activeTab === 'settings' ? 'scale-110' : subMutedTextColor}`}
             style={activeTab === 'settings' ? getStyle(state.settings.theme.headerColor, true) : undefined}
           >
-            <Settings size={28} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Ajustes</span>
+            <Settings size={24} />
+            <span className="text-[9px] font-bold uppercase tracking-tight">Ajustes</span>
           </button>
         </div>
       </nav>

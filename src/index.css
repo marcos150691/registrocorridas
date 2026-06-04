@@ -27,6 +27,16 @@
   @apply bg-black/5 border border-black/10;
 }
 
+.custom-card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 1rem;
+  transition: all 0.5s ease;
+  background: var(--card-bg);
+  border: var(--card-border-width, 1px) solid var(--card-border, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--card-shadow, none);
+}
+
 .neon-glow {
   box-shadow: 0 0 15px rgba(255, 99, 33, 0.4);
 }
