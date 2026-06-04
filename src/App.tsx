@@ -69,12 +69,16 @@ const INITIAL_STATE: AppState = {
     accumulatedTime: 0,
     lastUpdateDate: getTodayString(),
     currentShift: 'dia inteiro',
-    lastRecordedHour: 0
+    lastRecordedHour: 0,
+    startedAt: null,
+    pausedAt: null,
+    stoppedAt: null
   },
   settings: {
     defaultCountGoal: 10,
     defaultValueGoal: 150,
     defaultMonthlyGoal: 3000,
+    goalTargetDate: '',
     enableShiftTracking: true,
     enableMonthlyGoal: true,
     defaultShifts: {
@@ -149,6 +153,8 @@ const PRESET_BG_IMAGES = [
 
 const PRESET_BG_COLORS = [
   { name: 'Padrão', value: '' },
+  { name: 'Branco Puro', value: '#FFFFFF' },
+  { name: 'Cinza Claro', value: '#F1F5F9' },
   { name: 'Azul Profundo', value: '#0A192F' },
   { name: 'Azul Marinho', value: '#001F3F' },
   { name: 'Verde Musgo', value: '#0B1A0E' },
@@ -247,6 +253,9 @@ export default function App() {
       }
       if (parsed.settings.enableMonthlyGoal === undefined) {
         parsed.settings.enableMonthlyGoal = true;
+      }
+      if (parsed.settings.goalTargetDate === undefined) {
+        parsed.settings.goalTargetDate = '';
       }
       // Migration for shift goals
       if (!parsed.settings.defaultShifts) {
@@ -363,6 +372,23 @@ export default function App() {
   const [lastAddedValue, setLastAddedValue] = useState<number | null>(null);
   const [showFloatingValue, setShowFloatingValue] = useState(false);
 
+  const coinPaths = useMemo(() => {
+    return Array.from({ length: 6 }).map((_, i) => {
+      const startX = 20 + Math.random() * 8;
+      const startY = 45 + Math.random() * 8;
+      const peakY = 5 - (Math.random() * 12);
+      const peakX = startX + (88 - startX) * 0.4 + (Math.random() * 10 - 5);
+      return {
+        delay: i * 0.12,
+        duration: 0.6 + Math.random() * 0.15,
+        x: [ `${startX}%`, `${peakX}%`, `88%` ],
+        y: [ `${startY}%`, `${peakY}%`, `15%` ],
+        rotate: [ 0, 180, 360 + Math.random() * 180 ],
+        scale: [ 0.5, 1.2, 0.4 ]
+      };
+    });
+  }, [showFloatingValue]);
+
   // Timer Tick
   const [elapsedTime, setElapsedTime] = useState(0);
   
@@ -414,17 +440,38 @@ export default function App() {
     setState(prev => {
       const now = Date.now();
       const isRunning = !prev.workTimer?.isRunning;
+      const currentTimeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      let startedAt = prev.workTimer?.startedAt || null;
+      let pausedAt = prev.workTimer?.pausedAt || null;
+      let stoppedAt = prev.workTimer?.stoppedAt || null;
+
+      if (isRunning) {
+        if ((prev.workTimer?.accumulatedTime || 0) === 0) {
+          startedAt = currentTimeStr;
+          pausedAt = null;
+          stoppedAt = null;
+        } else if (!startedAt) {
+          startedAt = currentTimeStr;
+        }
+      } else {
+        pausedAt = currentTimeStr;
+      }
       
       return {
         ...prev,
         workTimer: {
+          ...prev.workTimer,
           isRunning,
           startTime: isRunning ? now : null,
           accumulatedTime: isRunning 
             ? (prev.workTimer?.accumulatedTime || 0) 
             : (prev.workTimer?.accumulatedTime || 0) + (prev.workTimer?.startTime ? (now - prev.workTimer.startTime) : 0),
           lastUpdateDate: today,
-          currentShift: prev.workTimer?.currentShift || 'dia inteiro'
+          currentShift: prev.workTimer?.currentShift || 'dia inteiro',
+          startedAt,
+          pausedAt,
+          stoppedAt
         }
       };
     });
@@ -452,7 +499,10 @@ export default function App() {
         startTime: null,
         accumulatedTime: 0,
         lastUpdateDate: today,
-        currentShift: prev.workTimer?.currentShift || 'dia inteiro'
+        currentShift: prev.workTimer?.currentShift || 'dia inteiro',
+        startedAt: null,
+        pausedAt: null,
+        stoppedAt: null
       }
     }));
     setShowTimerResetConfirm(false);
@@ -465,8 +515,10 @@ export default function App() {
 
   const confirmStopTimer = () => {
     setState(prev => {
+      const now = Date.now();
+      const currentTimeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const timeToSave = (prev.workTimer?.accumulatedTime || 0) + 
-        (prev.workTimer?.isRunning && prev.workTimer?.startTime ? (Date.now() - prev.workTimer.startTime) : 0);
+        (prev.workTimer?.isRunning && prev.workTimer?.startTime ? (now - prev.workTimer.startTime) : 0);
       const shiftToSave = prev.workTimer?.currentShift || 'dia inteiro';
       const newDailyJourneys = { ...(prev.dailyJourneys || {}) };
       
@@ -483,7 +535,10 @@ export default function App() {
           startTime: null,
           accumulatedTime: 0, // Reset after saving
           lastUpdateDate: today,
-          currentShift: prev.workTimer?.currentShift || 'dia inteiro'
+          currentShift: prev.workTimer?.currentShift || 'dia inteiro',
+          startedAt: prev.workTimer?.startedAt,
+          pausedAt: prev.workTimer?.pausedAt,
+          stoppedAt: currentTimeStr
         }
       };
     });
@@ -689,8 +744,16 @@ export default function App() {
     let daysRemaining = lastDayOfMonth;
     
     if (selectedMonth === currentMonthStr) {
-      const currentDay = new Date().getDate();
-      daysRemaining = Math.max(1, lastDayOfMonth - currentDay + 1);
+      if (state.settings.goalTargetDate) {
+        const targetDateObj = new Date(state.settings.goalTargetDate + 'T23:59:59');
+        const todayDateObj = new Date(today + 'T00:00:00');
+        const diffTime = targetDateObj.getTime() - todayDateObj.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        daysRemaining = Math.max(1, diffDays);
+      } else {
+        const currentDay = new Date().getDate();
+        daysRemaining = Math.max(1, lastDayOfMonth - currentDay + 1);
+      }
     } else if (selectedMonth < currentMonthStr) {
       daysRemaining = 1; // Month passed, show stats as final
     }
@@ -703,7 +766,7 @@ export default function App() {
     const progress = Math.min(100, (totalValue / goal) * 100);
     
     return { totalValue, goal, remaining, dailyNeeded, weeklyNeeded, progress, daysRemaining, weeksRemaining, selectedMonth };
-  }, [state.activities, state.rides, state.settings.defaultMonthlyGoal, today, selectedMonth]);
+  }, [state.activities, state.rides, state.settings.defaultMonthlyGoal, state.settings.goalTargetDate, today, selectedMonth]);
 
   const financeStats = useMemo(() => {
     const now = new Date();
@@ -1160,7 +1223,7 @@ export default function App() {
     });
   };
 
-  const updatePreference = (key: 'enableSound' | 'enableAnimation' | 'enableShiftTracking' | 'enableMonthlyGoal' | 'defaultMonthlyGoal' | 'defaultCountGoal' | 'defaultValueGoal', value: any) => {
+  const updatePreference = (key: 'enableSound' | 'enableAnimation' | 'enableShiftTracking' | 'enableMonthlyGoal' | 'defaultMonthlyGoal' | 'defaultCountGoal' | 'defaultValueGoal' | 'goalTargetDate', value: any) => {
     setState(prev => ({
       ...prev,
       settings: {
@@ -1203,11 +1266,11 @@ export default function App() {
   const targetValue = state.settings.enableShiftTracking ? todayStats.currentShiftStats.value : todayStats.value;
   const targetValueGoal = state.settings.enableShiftTracking ? todayStats.currentShiftGoal.valueGoal : currentGoal.valueGoal;
 
-  const bgColor = state.settings.theme.customBgColor || (isDark ? '#0F1115' : '#FFFFFF');
-  const textColor = isDark ? 'text-white' : 'text-black';
-  const mutedTextColor = isDark ? 'text-white/50' : 'text-black/50';
-  const subMutedTextColor = isDark ? 'text-white/30' : 'text-black/30';
-  const cardClass = isDark ? 'glass-card glass-card-dark' : 'glass-card glass-card-light';
+  const bgColor = state.settings.theme.customBgColor || (isDark ? '#0F1115' : '#F8FAFC');
+  const textColor = isDark ? 'text-white' : 'text-slate-950';
+  const mutedTextColor = isDark ? 'text-white/70' : 'text-slate-700 font-semibold';
+  const subMutedTextColor = isDark ? 'text-white/50' : 'text-slate-500 font-medium';
+  const cardClass = isDark ? 'glass-card glass-card-dark' : 'glass-card glass-card-light shadow-md shadow-slate-200/50 border border-slate-200 bg-white/80';
 
   const mainBgStyle = {
     backgroundColor: bgColor,
@@ -1294,7 +1357,7 @@ export default function App() {
             <div className={`${cardClass} p-3 sm:p-4 flex flex-col gap-2 relative overflow-hidden ring-1 ring-white/5`}>
               <div className="flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${state.workTimer?.isRunning ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-white/40'}`}>
+                  <div className={`p-1.5 rounded-lg ${state.workTimer?.isRunning ? 'bg-green-500/20 text-green-500' : isDark ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'}`}>
                     <Clock size={16} className={state.workTimer?.isRunning ? 'animate-pulse' : ''} />
                   </div>
                   <div>
@@ -1341,7 +1404,7 @@ export default function App() {
                       className={`flex-1 py-1.5 px-0.5 rounded-xl text-[9px] uppercase font-mono font-bold tracking-tight transition-all ${
                         state.workTimer?.currentShift === shift
                           ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                          : isDark ? 'bg-white/5 text-white/40 hover:bg-white/10' : 'bg-black/5 text-black/40 hover:bg-black/10'
+                          : isDark ? 'bg-white/5 text-white/40 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/50'
                       } ${state.workTimer?.isRunning ? 'opacity-50 cursor-not-allowed border border-white/5' : ''}`}
                     >
                       {shift === 'dia inteiro' ? 'Dia' : shift}
@@ -1367,6 +1430,33 @@ export default function App() {
                   <span className="text-[7px] font-mono uppercase tracking-[0.2em] text-green-500/60 font-bold whitespace-nowrap">Em serviço</span>
                 </motion.div>
               )}
+
+              {/* Display Start, Pause and Stop Times */}
+              {(state.workTimer?.startedAt || state.workTimer?.pausedAt || state.workTimer?.stoppedAt) && (
+                <div className={`mt-1.5 p-2 rounded-xl flex flex-wrap items-center justify-around gap-2 text-[10px] font-mono border ${isDark ? 'bg-white/5 border-white/5 text-white/70' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
+                  {state.workTimer?.startedAt && (
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                      <span className="opacity-60">Início:</span>
+                      <strong className={isDark ? 'text-white/90' : 'text-slate-950 font-bold'}>{state.workTimer.startedAt}</strong>
+                    </div>
+                  )}
+                  {state.workTimer?.pausedAt && (
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                      <span className="opacity-60">Pausa:</span>
+                      <strong className={isDark ? 'text-white/90' : 'text-slate-950 font-bold'}>{state.workTimer.pausedAt}</strong>
+                    </div>
+                  )}
+                  {state.workTimer?.stoppedAt && (
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                      <span className="opacity-60">Larguei:</span>
+                      <strong className={isDark ? 'text-white/90' : 'text-slate-950 font-bold'}>{state.workTimer.stoppedAt}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Shift Selector */}
@@ -1380,7 +1470,7 @@ export default function App() {
                       className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap border ${
                         dashboardShift === s 
                           ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
-                          : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-black/5 text-black/40 border-black/5'
+                          : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                       }`}
                     >
                       {s === 'dia' ? 'Dia' : s}
@@ -1445,7 +1535,7 @@ export default function App() {
                           className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${
                             registrationShift === s 
                               ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
-                              : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-black/5 text-black/40 border-black/5'
+                              : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-slate-100 text-slate-705 border-slate-200 hover:bg-slate-200'
                           }`}
                         >
                           {s}
@@ -1489,7 +1579,7 @@ export default function App() {
                       </p>
                     )}
                   </div>
-                  <div className={`p-2 rounded-full ${countProgress >= 100 ? 'bg-green-500/20 text-green-500' : isDark ? 'bg-white/5 text-white/40' : 'bg-black/5 text-black/40'}`}>
+                  <div className={`p-2 rounded-full ${countProgress >= 100 ? 'bg-green-500/20 text-green-500' : isDark ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                     {countProgress >= 100 ? <CheckCircle2 size={24} className={state.settings.enableAnimation ? "animate-bounce" : ""} /> : <CheckCircle2 size={24} />}
                   </div>
                 </div>
@@ -1629,22 +1719,64 @@ export default function App() {
                       
                       <AnimatePresence>
                         {showFloatingValue && lastAddedValue && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 0, scale: 0.5 }}
-                            animate={{ opacity: 1, y: -60, scale: 1.5 }}
-                            exit={{ opacity: 0, y: -100, scale: 1 }}
-                            className="absolute top-0 right-0 font-bold text-3xl text-green-500 pointer-events-none z-50"
-                            style={{ textShadow: '0 0 20px rgba(34, 197, 94, 0.5)' }}
-                          >
-                            +R$ {lastAddedValue.toFixed(2)}
-                          </motion.div>
+                          <>
+                            {/* Coins entering the wallet */}
+                            {coinPaths.map((path, idx) => (
+                              <motion.div
+                                key={idx}
+                                initial={{ 
+                                  left: path.x[0], 
+                                  top: path.y[0], 
+                                  opacity: 0, 
+                                  scale: path.scale[0],
+                                  rotate: 0 
+                                }}
+                                animate={{ 
+                                  left: path.x, 
+                                  top: path.y, 
+                                  opacity: [0, 1, 1, 0],
+                                  scale: path.scale,
+                                  rotate: path.rotate 
+                                }}
+                                transition={{ 
+                                  duration: path.duration,
+                                  delay: path.delay,
+                                  ease: "easeOut"
+                                }}
+                                className="absolute pointer-events-none z-30 w-6 h-6 rounded-full bg-gradient-to-tr from-yellow-600 via-amber-400 to-yellow-200 border-2 border-amber-300 shadow-md flex items-center justify-center text-[9px] font-black text-amber-950 font-mono"
+                                style={{
+                                  boxShadow: '0 0 8px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4)'
+                                }}
+                              >
+                                $
+                              </motion.div>
+                            ))}
+
+                            {/* Floating values popping from the wallet */}
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.5, y: 0 }}
+                              animate={{ opacity: [0, 1, 1, 0], scale: [1, 1.3, 1], y: -45 }}
+                              transition={{ duration: 1.2, delay: 0.6 }}
+                              className="absolute top-[8%] right-[5%] font-bold text-2xl text-green-400 pointer-events-none z-50 font-mono"
+                              style={{ textShadow: '0 0 15px rgba(74, 222, 128, 0.6)' }}
+                            >
+                              +R$ {lastAddedValue.toFixed(2)}
+                            </motion.div>
+                          </>
                         )}
                       </AnimatePresence>
                     </div>
                   </div>
-                  <div className={`p-2 rounded-full ${valueProgress >= 100 ? 'bg-green-500/20 text-green-500' : isDark ? 'bg-white/5 text-white/40' : 'bg-black/5 text-black/40'}`}>
-                    {valueProgress >= 100 ? <DollarSign size={24} className={state.settings.enableAnimation ? "animate-bounce" : ""} /> : <DollarSign size={24} />}
-                  </div>
+                  <motion.div 
+                    animate={showFloatingValue && state.settings.enableAnimation ? {
+                      scale: [1, 1.25, 0.95, 1.15, 1],
+                      rotate: [0, -10, 10, -5, 5, 0],
+                    } : {}}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className={`p-2 rounded-full relative z-20 ${valueProgress >= 100 ? 'bg-green-500/25 text-green-400 border border-green-500/20' : isDark ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}
+                  >
+                    <Wallet size={24} className={valueProgress >= 100 && state.settings.enableAnimation ? "animate-bounce" : ""} />
+                  </motion.div>
                 </div>
                 
                 {valueProgress >= 100 && (
@@ -1962,11 +2094,47 @@ export default function App() {
                           {new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </p>
                         {dayJourneyTime > 0 && (
-                          <div className="flex items-center gap-1.5 text-sm font-mono text-green-500 font-bold uppercase tracking-tight mt-1">
-                            <div className="flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-md">
-                              <Clock size={14} />
-                              <span>Total: {formatElapsedTime(dayJourneyTime)}</span>
+                          <div className="flex flex-col gap-1.5 mt-1">
+                            <div className="flex items-center gap-1.5 text-sm font-mono text-green-500 font-bold uppercase tracking-tight">
+                              <div className="flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-md">
+                                <Clock size={14} />
+                                <span>Total: {formatElapsedTime(dayJourneyTime)}</span>
+                              </div>
                             </div>
+                            
+                            {/* Breakdown of shifts worked hours */}
+                            {state.settings.enableShiftTracking && (
+                              <div className="flex flex-wrap gap-1.5 mt-0.5">
+                                {(['manhã', 'tarde', 'noite'] as const).map(s => {
+                                  const sTime = (dailyJourneysObj[s] || 0) + 
+                                    (date === today && state.workTimer?.currentShift === s ? elapsedTime : 0);
+                                  if (sTime === 0) return null;
+                                  return (
+                                    <span 
+                                      key={s} 
+                                      className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-md border flex items-center gap-1
+                                        ${isDark ? 'bg-white/5 border-white/5 text-white/60' : 'bg-black/5 border-black/5 text-black/60'}`}
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                                      <span className="capitalize">{s}:</span> 
+                                      <strong className={isDark ? 'text-white/80' : 'text-black/80'}>{formatElapsedTime(sTime)}</strong>
+                                    </span>
+                                  );
+                                })}
+                                {(((dailyJourneysObj['dia inteiro'] || 0) + (date === today && state.workTimer?.currentShift === 'dia inteiro' ? elapsedTime : 0)) > 0) ? (
+                                  <span 
+                                    className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-md border flex items-center gap-1
+                                      ${isDark ? 'bg-white/5 border-white/5 text-white/60' : 'bg-black/5 border-black/5 text-black/60'}`}
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                                    <span>Integral:</span> 
+                                    <strong className={isDark ? 'text-white/80' : 'text-black/80'}>
+                                      {formatElapsedTime((dailyJourneysObj['dia inteiro'] || 0) + (date === today && state.workTimer?.currentShift === 'dia inteiro' ? elapsedTime : 0))}
+                                    </strong>
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2136,10 +2304,20 @@ export default function App() {
                           type="month"
                           value={selectedMonth}
                           onChange={(e) => setSelectedMonth(e.target.value)}
-                          className={`bg-white/10 border border-white/10 rounded-md px-4 py-1.5 text-base font-mono uppercase focus:outline-none ${subMutedTextColor} cursor-pointer hover:text-white hover:bg-white/20 transition-all`}
+                          className={`rounded-md px-4 py-1.5 text-base font-mono uppercase focus:outline-none cursor-pointer transition-all ${
+                            isDark 
+                              ? 'bg-white/10 border border-white/10 hover:bg-white/20 hover:text-white' 
+                              : 'bg-slate-100 border border-slate-200 text-slate-800 hover:bg-slate-200 hover:text-slate-900 shadow-sm'
+                          } ${subMutedTextColor}`}
                         />
                       </div>
                       <h4 className="text-2xl font-bold font-mono">R$ {monthlyStats.totalValue.toFixed(2)}</h4>
+                      {state.settings.goalTargetDate && selectedMonth === today.substring(0, 7) && (
+                        <div className="text-[11px] font-mono font-bold text-orange-500 uppercase tracking-wider flex items-center gap-1.5 mt-1.5">
+                          <Calendar size={12} className="text-orange-500 animate-pulse" />
+                          <span>Prazo: {new Date(state.settings.goalTargetDate + 'T00:00:00').toLocaleDateString('pt-BR')} ({monthlyStats.daysRemaining} {monthlyStats.daysRemaining === 1 ? 'dia restante' : 'dias restantes'})</span>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className={`${subMutedTextColor} text-[10px] uppercase font-mono tracking-tighter`}>Objetivo</p>
@@ -2149,7 +2327,7 @@ export default function App() {
                             type="number"
                             value={tempMonthlyGoal}
                             onChange={(e) => setTempMonthlyGoal(e.target.value)}
-                            className={`w-28 p-2 text-base font-mono font-bold rounded border ${isDark ? 'bg-white/5 border-white/20 text-white' : 'bg-black/5 border-black/20 text-black'} focus:outline-none focus:border-white/40`}
+                            className={`w-28 p-2 text-base font-mono font-bold rounded border ${isDark ? 'bg-white/5 border-white/20 text-white' : 'bg-slate-100 border-slate-250 text-slate-900'} focus:outline-none focus:border-slate-400`}
                             autoFocus
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
@@ -2455,7 +2633,7 @@ export default function App() {
             <div className={`${cardClass} p-6 space-y-6`}>
               <div className="space-y-4 border-b border-white/5 pb-6">
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-bold uppercase tracking-widest">Meta Mensal (R$)</label>
+                  <label className="text-sm font-bold uppercase tracking-widest block font-sans">Meta Mensal (R$)</label>
                   <span className="font-mono font-bold text-2xl" style={getStyle(state.settings.theme.headerColor, true)}>R$ {state.settings.defaultMonthlyGoal}</span>
                 </div>
                 <input 
@@ -2468,6 +2646,39 @@ export default function App() {
                   className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
                   style={{ accentColor: state.settings.theme.headerColor }}
                 />
+              </div>
+
+              {/* Goal Target End Date */}
+              <div className="space-y-4 border-b border-white/5 pb-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <label className="text-sm font-bold uppercase tracking-widest">Data Limite da Meta</label>
+                    <p className={`${subMutedTextColor} text-[10px] mt-0.5`}>Selecione um prazo customizado para faturamento</p>
+                  </div>
+                  {state.settings.goalTargetDate ? (
+                    <span className="font-mono text-xs text-orange-500 font-bold bg-orange-500/15 px-2.5 py-1 rounded-lg">
+                      {new Date(state.settings.goalTargetDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    </span>
+                  ) : (
+                    <span className={`text-[10px] uppercase font-mono ${subMutedTextColor}`}>Até o fim do mês</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input 
+                    type="date"
+                    value={state.settings.goalTargetDate || ''}
+                    onChange={(e) => updatePreference('goalTargetDate', e.target.value)}
+                    className={`flex-1 p-3 rounded-xl border border-white/10 font-mono text-sm ${isDark ? 'bg-white/5 text-white' : 'bg-black/5 text-black'} focus:outline-none focus:border-white/20`}
+                  />
+                  {state.settings.goalTargetDate && (
+                    <button
+                      onClick={() => updatePreference('goalTargetDate', '')}
+                      className={`px-4 py-2 text-xs font-bold uppercase rounded-xl transition-colors border border-white/10 ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/10 hover:bg-black/20 text-black'}`}
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
@@ -2690,9 +2901,20 @@ export default function App() {
                       key={color.value}
                       onClick={() => {
                         updateTheme('customBgColor', color.value);
-                        if (color.value) updateTheme('backgroundColor', 'dark');
+                        if (color.value) {
+                          const lightColors = ['#FFFFFF', '#F1F5F9'];
+                          if (lightColors.includes(color.value.toUpperCase())) {
+                            updateTheme('backgroundColor', 'light');
+                          } else {
+                            updateTheme('backgroundColor', 'dark');
+                          }
+                        }
                       }}
-                      className={`w-8 h-8 rounded-full border-2 transition-transform ${state.settings.theme.customBgColor === color.value ? 'border-white scale-110' : 'border-transparent'}`}
+                      className={`w-8 h-8 rounded-full border transition-all ${
+                        state.settings.theme.customBgColor === color.value 
+                          ? 'ring-2 ring-orange-500 scale-110 border-white' 
+                          : color.value && ['#FFFFFF', '#F1F5F9'].includes(color.value.toUpperCase()) ? 'border-slate-300' : 'border-transparent'
+                      }`}
                       style={{ backgroundColor: color.value || (isDark ? '#0F1115' : '#FFFFFF') }}
                       title={color.name}
                     />
@@ -3010,7 +3232,7 @@ export default function App() {
                     setNewRideValue('');
                     setNewRideDesc('');
                   }}
-                  className={`flex-1 py-4 rounded-xl ${isDark ? 'bg-white/5 text-white/60' : 'bg-black/5 text-black/60'} font-bold text-sm uppercase tracking-widest`}
+                  className={`flex-1 py-4 rounded-xl ${isDark ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-700 border border-slate-200/50 hover:bg-slate-200'} font-bold text-sm uppercase tracking-widest`}
                 >
                   Cancelar
                 </button>

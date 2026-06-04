@@ -49,6 +49,9 @@ export interface WorkTimer {
   lastUpdateDate: string;
   currentShift: 'dia inteiro' | 'manhã' | 'tarde' | 'noite';
   lastRecordedHour?: number;
+  startedAt?: string | null;
+  pausedAt?: string | null;
+  stoppedAt?: string | null;
 }
 
 export interface HourlyReport {
@@ -69,6 +72,7 @@ export interface AppState {
     defaultCountGoal: number;
     defaultValueGoal: number;
     defaultMonthlyGoal?: number;
+    goalTargetDate?: string;
     defaultShifts?: {
       manhã: ShiftGoal;
       tarde: ShiftGoal;
