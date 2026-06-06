@@ -342,10 +342,6 @@ export default function App() {
       } else {
         setHistoryShift(dashboardShift as any);
       }
-      
-      if (dashboardShift !== 'dia') {
-        setRegistrationShift(dashboardShift);
-      }
     }
   }, [dashboardShift, state.settings.enableShiftTracking]);
 
@@ -1546,18 +1542,26 @@ export default function App() {
                   </motion.div>
                 )}
 
-                {dashboardShift === 'dia' && !state.finalizedDays?.includes(today) && (
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                    <span className="text-[10px] font-mono uppercase tracking-widest opacity-50">Registrar em:</span>
-                    <div className="flex gap-2 flex-1">
+                {!state.finalizedDays?.includes(today) && (
+                  <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+                    isDark 
+                      ? 'bg-white/5 border-white/10' 
+                      : 'bg-slate-100 border-slate-300 shadow-sm'
+                  }`}>
+                    <div>
+                      <span className={`text-[10px] font-mono font-bold uppercase tracking-widest block sm:inline ${subMutedTextColor}`}>
+                        Turno de Rodar (Registrar Corridas em):
+                      </span>
+                    </div>
+                    <div className="flex gap-2 w-full sm:max-w-[280px]">
                       {(['manhã', 'tarde', 'noite'] as const).map((s) => (
                         <button
                           key={s}
                           onClick={() => setRegistrationShift(s)}
                           className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${
                             registrationShift === s 
-                              ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
-                              : isDark ? 'bg-white/5 text-white/40 border-white/5' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                              ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold shadow-md'
+                              : isDark ? 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-200 hover:text-slate-900 shadow-sm'
                           }`}
                         >
                           {s}
@@ -1661,7 +1665,7 @@ export default function App() {
                       </div>
                       <div className="mt-1">
                         {targetCount < targetCountGoal ? (
-                          <span className="text-white font-bold text-xl">Faltam {targetCountGoal - targetCount} corridas</span>
+                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold text-xl`}>Faltam {targetCountGoal - targetCount} corridas</span>
                         ) : (
                           <span className="text-green-500 font-bold">Meta Batida! (+{targetCount - targetCountGoal} extra)</span>
                         )}
@@ -1856,17 +1860,17 @@ export default function App() {
                       </div>
                       <div className="mt-1 flex flex-col items-center gap-1 sm:flex-row sm:gap-2">
                         {targetValue < targetValueGoal ? (
-                          <span className="text-white font-bold text-xl">
+                          <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold text-xl`}>
                             Faltam R$ {(targetValueGoal - targetValue).toFixed(2)}
                           </span>
                         ) : (
                           <span className="text-green-500 font-bold">Meta Batida! (+R$ {(targetValue - targetValueGoal).toFixed(2)})</span>
                         )}
-                        <span className="text-white/20 hidden sm:inline">•</span>
+                        <span className={`${isDark ? 'text-white/20' : 'text-slate-300'} hidden sm:inline`}>•</span>
                         <div className="text-xs sm:text-sm font-sans">
                           {targetCount < targetCountGoal ? (
-                            <span className="text-white/70">
-                              (Faltam <span className="text-white font-bold">{targetCountGoal - targetCount}</span> corridas)
+                            <span className={isDark ? 'text-white/70' : 'text-slate-700 font-bold'}>
+                              (Faltam <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-bold`}>{targetCountGoal - targetCount}</span> corridas)
                             </span>
                           ) : (
                             <span className="text-green-500/80 font-bold">(Meta de corridas batida!)</span>
@@ -2618,7 +2622,7 @@ export default function App() {
                               </div>
                               <button 
                                 onClick={() => deleteHourlyReport(report.timestamp)}
-                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all bg-white/5 border border-white/5 active:scale-90"
+                                className={`p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all active:scale-90 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200 hover:bg-slate-200'}`}
                                 title="Excluir registro"
                               >
                                 <Trash2 size={16} />
@@ -2775,8 +2779,8 @@ export default function App() {
                   {(['manhã', 'tarde', 'noite'] as const).map((shift) => {
                     const shiftGoal = (state.settings.defaultShifts || INITIAL_STATE.settings.defaultShifts!)[shift];
                     return (
-                      <div key={shift} className="space-y-4 p-4 rounded-xl bg-white/5 border border-white/5">
-                        <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-white/70 border-b border-white/5 pb-2 mb-4 flex items-center gap-2">
+                      <div key={shift} className={`space-y-4 p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-300 shadow-sm'}`}>
+                        <h4 className={`text-xs font-bold uppercase tracking-[0.2em] border-b pb-2 mb-4 flex items-center gap-2 ${isDark ? 'text-white/70 border-white/5' : 'text-slate-800 border-slate-200'}`}>
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: state.settings.theme.headerColor }} />
                           Turno: {shift}
                         </h4>
