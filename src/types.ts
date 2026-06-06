@@ -100,6 +100,7 @@ export interface AppState {
   history: AppStateSnapshot[];
   dailyJourneys?: { [date: string]: { [shift: string]: number } };
   finalizedDays?: string[];
+  lastStoppedJourney?: { date: string; shift: string; durationMs: number; phrase: string } | null;
 }
 
 export interface AppStateSnapshot {

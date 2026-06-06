@@ -102,7 +102,8 @@ const INITIAL_STATE: AppState = {
   history: [],
   dailyJourneys: {},
   finalizedDays: [],
-  hourlyPerformance: []
+  hourlyPerformance: [],
+  lastStoppedJourney: null
 };
 
 const PRESET_COLORS = [
@@ -514,6 +515,10 @@ export default function App() {
   };
 
   const confirmStopTimer = () => {
+    let savedPhrase = '';
+    let workedTime = 0;
+    let savedShift = '';
+
     setState(prev => {
       const now = Date.now();
       const currentTimeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -522,14 +527,26 @@ export default function App() {
       const shiftToSave = prev.workTimer?.currentShift || 'dia inteiro';
       const newDailyJourneys = { ...(prev.dailyJourneys || {}) };
       
+      workedTime = timeToSave;
+      savedShift = shiftToSave;
+
       if (timeToSave > 0) {
         if (!newDailyJourneys[today]) newDailyJourneys[today] = {};
         newDailyJourneys[today][shiftToSave] = (newDailyJourneys[today][shiftToSave] || 0) + timeToSave;
       }
 
+      const totalShiftTime = (newDailyJourneys[today]?.[shiftToSave]) || timeToSave;
+      savedPhrase = `Parabéns! Você trabalhou ${formatFriendlyDuration(totalShiftTime)} no turno ${shiftToSave}!`;
+
       return {
         ...prev,
         dailyJourneys: newDailyJourneys,
+        lastStoppedJourney: timeToSave > 0 ? {
+          date: today,
+          shift: shiftToSave,
+          durationMs: totalShiftTime,
+          phrase: savedPhrase
+        } : prev.lastStoppedJourney,
         workTimer: {
           isRunning: false,
           startTime: null,
@@ -542,8 +559,25 @@ export default function App() {
         }
       };
     });
+    
     setShowTimerStopConfirm(false);
-    toast.success("Jornada finalizada e salva!");
+    
+    if (workedTime > 0) {
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+      toast.success(
+        <div className="flex flex-col gap-1 text-left">
+          <span className="font-bold text-base text-emerald-600">🎉 Parabéns!</span>
+          <span className="text-sm">Você trabalhou {formatFriendlyDuration(workedTime)} no turno de {savedShift === 'dia inteiro' ? 'Dia Inteiro' : savedShift}!</span>
+        </div>,
+        { duration: 8000 }
+      );
+    } else {
+      toast.success("Jornada finalizada!");
+    }
   };
 
   const deleteJourneyTime = (date: string, shift: string) => {
@@ -583,6 +617,28 @@ export default function App() {
     const seconds = totalSeconds % 60;
     
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const formatFriendlyDuration = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    const parts: string[] = [];
+    if (hours > 0) {
+      parts.push(`${hours} ${hours === 1 ? 'hora' : 'horas'}`);
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`);
+    }
+    if (seconds > 0 || parts.length === 0) {
+      parts.push(`${seconds} ${seconds === 1 ? 'segundo' : 'segundos'}`);
+    }
+    
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return `${parts[0]} e ${parts[1]}`;
+    return `${parts[0]}, ${parts[1]} e ${parts[2]}`;
   };
 
   // Refs to track goal completion state
@@ -1523,6 +1579,49 @@ export default function App() {
                   )}
                 </div>
               )}
+
+              {/* Completed Journeys list for Today (Fixed on Controle de Jornada) */}
+              {state.dailyJourneys?.[today] && Object.keys(state.dailyJourneys[today]).length > 0 && (
+                <div className="mt-3 space-y-2 border-t border-dashed pt-3 border-slate-300 dark:border-white/10">
+                  <p className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${subMutedTextColor}`}>
+                    Resumo de Horas Trabalhadas Hoje (Fixo):
+                  </p>
+                  {Object.entries(state.dailyJourneys[today]).map(([shift, ms]) => {
+                    if (ms === 0) return null;
+                    const isNewest = state.lastStoppedJourney && state.lastStoppedJourney.date === today && state.lastStoppedJourney.shift === shift;
+                    return (
+                      <div 
+                        key={shift} 
+                        className={`p-3 rounded-xl border flex flex-col gap-1.5 transition-all ${
+                          isNewest
+                            ? isDark 
+                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.1)] ring-1 ring-emerald-500/20' 
+                              : 'bg-emerald-50 border-emerald-400 text-emerald-950 font-bold shadow-sm'
+                            : isDark 
+                              ? 'bg-white/5 border-white/5 text-white/80' 
+                              : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className={`text-[10px] uppercase font-mono font-bold tracking-widest flex items-center gap-1.5 ${isNewest ? 'text-emerald-500' : isDark ? 'text-white/60' : 'text-slate-600'}`}>
+                            <span>🎉 {isNewest ? 'Último Registro' : 'Jornada Concluída'}</span>
+                          </span>
+                          <span className={`text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full border ${
+                            isNewest 
+                              ? 'bg-emerald-500/20 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                              : 'bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400'
+                          } font-bold`}>
+                            {shift === 'dia inteiro' ? 'Dia Semanal' : shift}
+                          </span>
+                        </div>
+                        <p className={`text-xs ${isDark ? 'text-white/90' : 'text-black font-semibold'}`}>
+                          Parabéns! Você trabalhou <strong className="font-extrabold font-mono text-sm">{formatFriendlyDuration(ms)}</strong> no turno de <span className="capitalize">{shift === 'dia inteiro' ? 'Dia Inteiro' : shift}</span>.
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Shift Selector */}
@@ -2206,6 +2305,9 @@ export default function App() {
                           <div className="flex flex-col">
                             <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'opacity-40' : 'text-slate-600 font-bold'}`}>Jornada</span>
                             <span className={`text-xs font-bold uppercase tracking-widest ${subMutedTextColor}`}>Dia Inteiro</span>
+                            <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold mt-1.5 leading-relaxed">
+                              🎉 Parabéns! Você trabalhou {formatFriendlyDuration((dailyJourneysObj['dia inteiro'] || 0) + (date === today && state.workTimer?.currentShift === 'dia inteiro' ? elapsedTime : 0))} neste turno.
+                            </p>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col items-end">
@@ -2237,23 +2339,28 @@ export default function App() {
                         return (
                           <div key={shift} className="space-y-2">
                             <div className={`flex justify-between items-center px-3 py-2.5 rounded-xl border-l-2 ${isDark ? 'bg-white/5 border-white/10 border-l-white/10' : 'bg-slate-100/90 border border-slate-300 border-l-slate-400 shadow-sm'} group`}>
-                              <div className="flex flex-col">
+                              <div className="flex flex-col gap-1">
                                 <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${subMutedTextColor}`}>{shift}</span>
                                 {shiftJourneyTime > 0 && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-mono font-bold text-green-500 uppercase tracking-tight mt-0.5">
-                                      <Clock size={10} className="inline mr-1 mb-0.5" />
-                                      {formatElapsedTime(shiftJourneyTime)}
-                                    </span>
-                                    {(dailyJourneysObj[shift]) && (
-                                      <button 
-                                        onClick={() => deleteJourneyTime(date, shift)}
-                                        className={`p-1 text-red-500 hover:bg-red-500/10 rounded transition-all active:scale-90 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-300 hover:bg-slate-200'}`}
-                                        title="Apagar tempo registrado"
-                                      >
-                                        <Trash2 size={10} />
-                                      </button>
-                                    )}
+                                  <div className="flex flex-col gap-1 mt-0.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-mono font-bold text-green-500 uppercase tracking-tight">
+                                        <Clock size={10} className="inline mr-1 mb-0.5" />
+                                        {formatElapsedTime(shiftJourneyTime)}
+                                      </span>
+                                      {(dailyJourneysObj[shift]) && (
+                                        <button 
+                                          onClick={() => deleteJourneyTime(date, shift)}
+                                          className={`p-1 text-red-500 hover:bg-red-500/10 rounded transition-all active:scale-90 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-300 hover:bg-slate-200'}`}
+                                          title="Apagar tempo registrado"
+                                        >
+                                          <Trash2 size={10} />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold leading-normal">
+                                      🎉 Parabéns! Você trabalhou {formatFriendlyDuration(shiftJourneyTime)} neste turno.
+                                    </p>
                                   </div>
                                 )}
                               </div>
