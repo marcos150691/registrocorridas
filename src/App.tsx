@@ -1267,9 +1267,9 @@ export default function App() {
   const targetValueGoal = state.settings.enableShiftTracking ? todayStats.currentShiftGoal.valueGoal : currentGoal.valueGoal;
 
   const bgColor = state.settings.theme.customBgColor || (isDark ? '#0F1115' : '#F8FAFC');
-  const textColor = isDark ? 'text-white' : 'text-slate-950';
-  const mutedTextColor = isDark ? 'text-white/70' : 'text-slate-900 font-bold';
-  const subMutedTextColor = isDark ? 'text-white/50' : 'text-slate-700 font-semibold';
+  const textColor = isDark ? 'text-white' : 'text-black font-bold';
+  const mutedTextColor = isDark ? 'text-white/70' : 'text-black font-extrabold';
+  const subMutedTextColor = isDark ? 'text-white/50' : 'text-black/90 font-bold';
   const cardClass = state.settings.theme.cardBgColor
     ? 'custom-card'
     : isDark 
@@ -1302,13 +1302,21 @@ export default function App() {
 
   const getStyle = (color: string, isText = false) => {
     let finalColor = color;
-    if (isText && !isDark && !color.startsWith('linear-gradient')) {
-      const upperColor = color.toUpperCase();
-      if (upperColor === '#FFD700') finalColor = '#B58E00'; // Dark Golden Yellow
-      else if (upperColor === '#00FF41') finalColor = '#15803D'; // Dark Forest Green
-      else if (upperColor === '#00D4FF' || upperColor === '#00FFFF') finalColor = '#0369A1'; // Dark Electric Blue
-      else if (upperColor === '#FF6321') finalColor = '#C2410C'; // Dark Orange
-      else if (upperColor === '#FF0000') finalColor = '#B91C1C'; // Dark Red
+    if (isText && !isDark) {
+      if (color.startsWith('linear-gradient')) {
+        // Text gradients are extremely hard to read on a light mobile screen; default to solid black
+        finalColor = '#000000';
+      } else {
+        const upperColor = color.toUpperCase().trim();
+        if (upperColor === '#FFD700') finalColor = '#854D00'; // Highly readable Dark Gold-Brown
+        else if (upperColor === '#00FF41') finalColor = '#14532D'; // High contrast Dark Forest Green
+        else if (upperColor === '#00D4FF' || upperColor === '#00FFFF') finalColor = '#1E3A8A'; // High contrast Dark Blue
+        else if (upperColor === '#FF6321') finalColor = '#9A3412'; // High contrast Dark Orange
+        else if (upperColor === '#FF0000') finalColor = '#991B1B'; // High contrast Dark Red
+        else if (upperColor === '#FF007F') finalColor = '#9D174D'; // High contrast Dark Hot Pink
+        else if (upperColor === '#9D00FF') finalColor = '#581C87'; // High contrast Dark Purple
+        else if (upperColor === '#FFFFFF' || upperColor === '#FFF') finalColor = '#000000'; // White text to Black
+      }
     }
 
     if (finalColor.startsWith('linear-gradient')) {
@@ -2056,7 +2064,7 @@ export default function App() {
                         </div>
                       </div>
                       <div className="text-right flex items-center gap-3">
-                        <p className="font-mono font-bold mr-2" style={{ color: state.settings.theme.valueBarColor }}>R$ {ride.value.toFixed(2)}</p>
+                        <p className="font-mono font-bold mr-2" style={getStyle(state.settings.theme.valueBarColor, true)}>R$ {ride.value.toFixed(2)}</p>
                         <button 
                           onClick={() => startEdit(ride)}
                           className={`${subMutedTextColor} hover:text-blue-500 transition-colors`}
@@ -2187,7 +2195,7 @@ export default function App() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-mono uppercase tracking-widest opacity-40 mb-0.5">Total Dia</p>
-                        <p className="text-lg font-mono font-bold leading-none" style={{ color: state.settings.theme.valueBarColor }}>R$ {total.toFixed(2)}</p>
+                        <p className="text-lg font-mono font-bold leading-none" style={getStyle(state.settings.theme.valueBarColor, true)}>R$ {total.toFixed(2)}</p>
                       </div>
                     </div>
 
@@ -2271,7 +2279,7 @@ export default function App() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-3">
-                                    <p className={`text-base font-mono font-bold`} style={{ color: state.settings.theme.valueBarColor }}>R$ {ride.value.toFixed(2)}</p>
+                                    <p className={`text-base font-mono font-bold`} style={getStyle(state.settings.theme.valueBarColor, true)}>R$ {ride.value.toFixed(2)}</p>
                                     <div className="flex gap-2">
                                       <button 
                                         onClick={() => startEdit(ride)}
@@ -2425,7 +2433,7 @@ export default function App() {
                         {monthlyStats.progress > 0 && <WheelieBike />}
                       </motion.div>
                     </div>
-                    <div className={`flex justify-between text-xs font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-slate-700 font-bold'}`}>
+                    <div className={`flex justify-between text-xs font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-black font-black'}`}>
                       <span>{monthlyStats.progress.toFixed(1)}% Concluído</span>
                       <span>Faltam R$ {monthlyStats.remaining.toFixed(2)}</span>
                     </div>
@@ -2453,7 +2461,7 @@ export default function App() {
                         animate={{ width: `${monthlyStats.weeklyNeeded > 0 ? Math.min(100, (financeStats.week.totalRecebido / monthlyStats.weeklyNeeded) * 100) : (monthlyStats.remaining === 0 ? 100 : 0)}%` }}
                       />
                     </div>
-                    <div className={`flex justify-between text-[10px] font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-slate-700 font-bold'}`}>
+                    <div className={`flex justify-between text-[10px] font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-black font-black'}`}>
                       <span>{monthlyStats.weeklyNeeded > 0 ? Math.min(100, (financeStats.week.totalRecebido / monthlyStats.weeklyNeeded) * 100).toFixed(1) : (monthlyStats.remaining === 0 ? '100' : '0')}% da Meta Semanal</span>
                       <span>Objetivo: R$ {monthlyStats.weeklyNeeded.toFixed(2)}</span>
                     </div>
@@ -2481,7 +2489,7 @@ export default function App() {
                         animate={{ width: `${monthlyStats.dailyNeeded > 0 ? Math.min(100, (financeStats.day.totalRecebido / monthlyStats.dailyNeeded) * 100) : (monthlyStats.remaining === 0 ? 100 : 0)}%` }}
                       />
                     </div>
-                    <div className={`flex justify-between text-[10px] font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-slate-700 font-bold'}`}>
+                    <div className={`flex justify-between text-[10px] font-mono uppercase tracking-tighter ${isDark ? 'opacity-60' : 'text-black font-black'}`}>
                       <span>{monthlyStats.dailyNeeded > 0 ? Math.min(100, (financeStats.day.totalRecebido / monthlyStats.dailyNeeded) * 100).toFixed(1) : (monthlyStats.remaining === 0 ? '100' : '0')}% da Meta Diária</span>
                       <span>Objetivo: R$ {monthlyStats.dailyNeeded.toFixed(2)}</span>
                     </div>
@@ -2495,7 +2503,7 @@ export default function App() {
               {(['day', 'week', 'month'] as const).map((period) => (
                 <div key={period} className={`${cardClass} p-6 space-y-4`}>
                   <div className="flex justify-between items-center">
-                    <h4 className={`text-base font-bold uppercase tracking-widest ${isDark ? 'opacity-60' : 'text-slate-800'}`}>
+                    <h4 className={`text-base font-bold uppercase tracking-widest ${isDark ? 'opacity-60' : 'text-black font-extrabold'}`}>
                       {period === 'day' ? 'Hoje' : period === 'week' ? 'Esta Semana' : 'Este Mês'}
                     </h4>
                     <div className="flex gap-4">
@@ -2513,18 +2521,18 @@ export default function App() {
                   <div className={`grid grid-cols-3 gap-2 pt-2 border-t ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
                     {(['Uber', '99', 'Outros'] as const).map((platform) => (
                       <div key={platform} className="space-y-1">
-                        <p className={`text-sm uppercase font-mono font-bold tracking-tighter ${isDark ? 'opacity-80' : 'text-slate-700'}`}>{platform}</p>
+                        <p className={`text-sm uppercase font-mono font-bold tracking-tighter ${isDark ? 'opacity-80' : 'text-black font-extrabold'}`}>{platform}</p>
                         <div className="flex flex-col">
-                          <span className={`text-sm font-bold ${isDark ? 'text-green-400/90' : 'text-green-600'}`}>+R$ {(financeStats[period].recebimentoManual[platform] + (platform === 'Outros' ? financeStats[period].faturamento : 0)).toFixed(0)}</span>
-                          <span className={`text-sm font-bold ${isDark ? 'text-red-400/90' : 'text-red-600'}`}>-R$ {financeStats[period].despesa[platform].toFixed(0)}</span>
+                          <span className={`text-sm font-bold ${isDark ? 'text-green-400/90' : 'text-emerald-700 font-extrabold'}`}>+R$ {(financeStats[period].recebimentoManual[platform] + (platform === 'Outros' ? financeStats[period].faturamento : 0)).toFixed(0)}</span>
+                          <span className={`text-sm font-bold ${isDark ? 'text-red-400/90' : 'text-rose-700 font-extrabold'}`}>-R$ {financeStats[period].despesa[platform].toFixed(0)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
                   <div className={`pt-2 border-t flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-300'}`}>
-                    <p className={`text-base font-bold uppercase tracking-widest ${isDark ? 'opacity-40' : 'text-slate-700'}`}>Saldo Líquido</p>
-                    <p className={`text-3xl font-bold font-mono ${(financeStats[period].totalRecebido - financeStats[period].despesa.total) >= 0 ? isDark ? 'text-blue-400' : 'text-blue-600' : isDark ? 'text-red-400' : 'text-red-600'}`}>
+                    <p className={`text-base font-bold uppercase tracking-widest ${isDark ? 'opacity-40' : 'text-black font-extrabold'}`}>Saldo Líquido</p>
+                    <p className={`text-3xl font-black font-mono ${(financeStats[period].totalRecebido - financeStats[period].despesa.total) >= 0 ? isDark ? 'text-blue-400' : 'text-blue-700 font-black' : isDark ? 'text-red-400' : 'text-rose-700 font-black'}`}>
                       R$ {(financeStats[period].totalRecebido - financeStats[period].despesa.total).toFixed(2)}
                     </p>
                   </div>
@@ -2631,15 +2639,15 @@ export default function App() {
                                 {report.hourMark}h
                               </div>
                               <div>
-                                <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest opacity-30">Intervalo</p>
+                                <p className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-widest ${isDark ? 'opacity-30' : 'text-black/60 font-bold'}`}>Intervalo</p>
                                 <p className="text-xs sm:text-sm font-bold">{report.hourMark - 1}h → {report.hourMark}h</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 sm:gap-4 ml-auto">
                               <div className="text-right">
-                                <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-green-500 opacity-60">Produção</p>
+                                <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-green-500 opacity-80">Produção</p>
                                 <p className="text-lg sm:text-xl font-bold font-mono">+R$ {report.incrementalValue.toFixed(2)}</p>
-                                <p className="text-[8px] sm:text-[10px] font-mono opacity-30 mt-0.5">R$ {report.valueAtMark.toFixed(2)}</p>
+                                <p className={`text-[8px] sm:text-[10px] font-mono mt-0.5 ${isDark ? 'opacity-30' : 'text-black/70 font-bold'}`}>R$ {report.valueAtMark.toFixed(2)}</p>
                               </div>
                               <button 
                                 onClick={() => deleteHourlyReport(report.timestamp)}
