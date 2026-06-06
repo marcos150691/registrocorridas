@@ -1301,18 +1301,28 @@ export default function App() {
   };
 
   const getStyle = (color: string, isText = false) => {
-    if (color.startsWith('linear-gradient')) {
+    let finalColor = color;
+    if (isText && !isDark && !color.startsWith('linear-gradient')) {
+      const upperColor = color.toUpperCase();
+      if (upperColor === '#FFD700') finalColor = '#B58E00'; // Dark Golden Yellow
+      else if (upperColor === '#00FF41') finalColor = '#15803D'; // Dark Forest Green
+      else if (upperColor === '#00D4FF' || upperColor === '#00FFFF') finalColor = '#0369A1'; // Dark Electric Blue
+      else if (upperColor === '#FF6321') finalColor = '#C2410C'; // Dark Orange
+      else if (upperColor === '#FF0000') finalColor = '#B91C1C'; // Dark Red
+    }
+
+    if (finalColor.startsWith('linear-gradient')) {
       if (isText) {
         return {
-          background: color,
+          background: finalColor,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
         };
       }
-      return { background: color };
+      return { background: finalColor };
     }
-    return isText ? { color } : { backgroundColor: color };
+    return isText ? { color: finalColor } : { backgroundColor: finalColor };
   };
 
   const getSolidColor = (color: string) => {
@@ -1413,21 +1423,51 @@ export default function App() {
 
               {/* Shift Selector for Timer */}
               {state.settings.enableShiftTracking && (
-                <div className="flex gap-1.5 mb-1">
-                  {(['dia inteiro', 'manhã', 'tarde', 'noite'] as const).map(shift => (
-                    <button
-                      key={shift}
-                      onClick={() => setTimerShift(shift)}
-                      disabled={state.workTimer?.isRunning}
-                      className={`flex-1 py-1.5 px-0.5 rounded-xl text-[9px] uppercase font-mono font-bold tracking-tight transition-all ${
-                        state.workTimer?.currentShift === shift
-                          ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                          : isDark ? 'bg-white/5 text-white/40 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/50'
-                      } ${state.workTimer?.isRunning ? 'opacity-50 cursor-not-allowed border border-white/5' : ''}`}
-                    >
-                      {shift === 'dia inteiro' ? 'Dia' : shift}
-                    </button>
-                  ))}
+                <div className="space-y-3 mb-1">
+                  <div>
+                    <span className={`text-[8px] font-mono font-bold uppercase tracking-widest block mb-1 ${subMutedTextColor}`}>
+                      Turno do Temporizador (Timer):
+                    </span>
+                    <div className="flex gap-1.5">
+                      {(['dia inteiro', 'manhã', 'tarde', 'noite'] as const).map(shift => (
+                        <button
+                          key={shift}
+                          onClick={() => setTimerShift(shift)}
+                          disabled={state.workTimer?.isRunning}
+                          className={`flex-1 py-1.5 px-0.5 rounded-xl text-[9px] uppercase font-mono font-bold tracking-tight transition-all ${
+                            state.workTimer?.currentShift === shift
+                              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                              : isDark ? 'bg-white/5 text-white/40 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/50'
+                          } ${state.workTimer?.isRunning ? 'opacity-50 cursor-not-allowed border border-white/5' : ''}`}
+                        >
+                          {shift === 'dia inteiro' ? 'Dia' : shift}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {!state.finalizedDays?.includes(today) && (
+                    <div className={`pt-2 border-t border-dashed ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
+                      <span className={`text-[8px] font-mono font-bold uppercase tracking-widest block mb-1 ${subMutedTextColor}`}>
+                        Turno de Rodar (Registrar Corridas em):
+                      </span>
+                      <div className="flex gap-1.5">
+                        {(['manhã', 'tarde', 'noite'] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setRegistrationShift(s)}
+                            className={`flex-1 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all border ${
+                              registrationShift === s 
+                                ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold shadow-md'
+                                : isDark ? 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 shadow-sm'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -1542,34 +1582,7 @@ export default function App() {
                   </motion.div>
                 )}
 
-                {!state.finalizedDays?.includes(today) && (
-                  <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-                    isDark 
-                      ? 'bg-white/5 border-white/10' 
-                      : 'bg-slate-100 border-slate-300 shadow-sm'
-                  }`}>
-                    <div>
-                      <span className={`text-[10px] font-mono font-bold uppercase tracking-widest block sm:inline ${subMutedTextColor}`}>
-                        Turno de Rodar (Registrar Corridas em):
-                      </span>
-                    </div>
-                    <div className="flex gap-2 w-full sm:max-w-[280px]">
-                      {(['manhã', 'tarde', 'noite'] as const).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setRegistrationShift(s)}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${
-                            registrationShift === s 
-                              ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold shadow-md'
-                              : isDark ? 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-200 hover:text-slate-900 shadow-sm'
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </div>
             )}
 
@@ -1627,7 +1640,7 @@ export default function App() {
                 )}
                 
                 <div className="space-y-2">
-                  <div className="progress-bar-container">
+                  <div className={`h-3 w-full rounded-full relative ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
                     {state.settings.enableAnimation ? (
                       <motion.div 
                         className="progress-bar-fill relative"
@@ -1657,7 +1670,7 @@ export default function App() {
                         {state.history.length > 0 && (
                           <button 
                             onClick={undo}
-                            className="underline hover:text-white transition-colors"
+                            className={`underline ${isDark ? 'hover:text-white' : 'hover:text-black'} transition-colors`}
                           >
                             Desfazer
                           </button>
@@ -1678,7 +1691,11 @@ export default function App() {
                   <div className="flex flex-wrap gap-2 pt-2">
                     <button 
                       onClick={() => quickAddRide(0, 'Corrida +1')}
-                      className={`flex-1 py-3 px-4 rounded-lg border border-white/10 text-lg font-bold uppercase tracking-widest hover:bg-white/5 transition-colors`}
+                      className={`flex-1 py-3 px-4 rounded-lg text-lg font-bold uppercase tracking-widest transition-colors border ${
+                        isDark 
+                          ? 'border-white/10 bg-white/5 hover:bg-white/10' 
+                          : 'border-slate-300 bg-slate-50 hover:bg-slate-150 active:bg-slate-200 shadow-sm'
+                      }`}
                       style={getStyle(state.settings.theme.countBarColor, true)}
                     >
                       +1 Corrida
@@ -1688,7 +1705,11 @@ export default function App() {
                         quickAddRide(0, 'Corrida +1');
                         quickAddRide(0, 'Corrida +1');
                       }}
-                      className={`flex-1 py-3 px-4 rounded-lg border border-white/10 text-lg font-bold uppercase tracking-widest hover:bg-white/5 transition-colors`}
+                      className={`flex-1 py-3 px-4 rounded-lg text-lg font-bold uppercase tracking-widest transition-colors border ${
+                        isDark 
+                          ? 'border-white/10 bg-white/5 hover:bg-white/10' 
+                          : 'border-slate-300 bg-slate-50 hover:bg-slate-150 active:bg-slate-200 shadow-sm'
+                      }`}
                       style={getStyle(state.settings.theme.countBarColor, true)}
                     >
                       +2 Corridas
@@ -1822,7 +1843,7 @@ export default function App() {
                 )}
                 
                 <div className="space-y-2">
-                  <div className="progress-bar-container">
+                  <div className={`h-3 w-full rounded-full relative ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
                     {state.settings.enableAnimation ? (
                       <motion.div 
                         className="progress-bar-fill relative"
@@ -1852,7 +1873,7 @@ export default function App() {
                         {state.history.length > 0 && (
                           <button 
                             onClick={undo}
-                            className="underline hover:text-white transition-colors"
+                            className={`underline ${isDark ? 'hover:text-white' : 'hover:text-black'} transition-colors`}
                           >
                             Desfazer
                           </button>
