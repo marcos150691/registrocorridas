@@ -2796,7 +2796,15 @@ export default function App() {
               <div className="space-y-4 border-b border-white/5 pb-6">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-bold uppercase tracking-widest block font-sans">Meta Mensal (R$)</label>
-                  <span className="font-mono font-bold text-2xl" style={getStyle(state.settings.theme.headerColor, true)}>R$ {state.settings.defaultMonthlyGoal}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-lg opacity-40">R$</span>
+                    <input 
+                      type="number"
+                      value={state.settings.defaultMonthlyGoal}
+                      onChange={(e) => updatePreference('defaultMonthlyGoal', parseInt(e.target.value) || 0)}
+                      className={`w-24 p-1 text-center font-mono font-bold text-2xl rounded-lg border ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30`}
+                    />
+                  </div>
                 </div>
                 <input 
                   type="range" 
@@ -2889,7 +2897,12 @@ export default function App() {
                         className="flex-1"
                         style={{ accentColor: getSolidColor(state.settings.theme.countBarColor) }}
                       />
-                      <span className="font-mono font-bold text-3xl w-16 text-right">{state.settings.defaultCountGoal}</span>
+                      <input 
+                        type="number"
+                        value={state.settings.defaultCountGoal}
+                        onChange={(e) => updateSettings(parseInt(e.target.value) || 0, state.settings.defaultValueGoal)}
+                        className={`w-16 p-1 text-center font-mono font-bold text-2xl rounded-lg border ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30`}
+                      />
                     </div>
                   </div>
 
@@ -2906,7 +2919,12 @@ export default function App() {
                         className="flex-1"
                         style={{ accentColor: getSolidColor(state.settings.theme.valueBarColor) }}
                       />
-                      <span className="font-mono font-bold text-3xl w-20 text-right">{state.settings.defaultValueGoal}</span>
+                      <input 
+                        type="number"
+                        value={state.settings.defaultValueGoal}
+                        onChange={(e) => updateSettings(state.settings.defaultCountGoal, parseInt(e.target.value) || 0)}
+                        className={`w-24 p-1 text-center font-mono font-bold text-2xl rounded-lg border ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30`}
+                      />
                     </div>
                   </div>
                 </div>
@@ -2933,7 +2951,12 @@ export default function App() {
                               className="flex-1"
                               style={{ accentColor: getSolidColor(state.settings.theme.countBarColor) }}
                             />
-                            <span className="font-mono font-bold text-2xl w-12 text-right">{shiftGoal.countGoal}</span>
+                            <input 
+                              type="number"
+                              value={shiftGoal.countGoal}
+                              onChange={(e) => updateShiftGoal(shift, 'countGoal', parseInt(e.target.value) || 0)}
+                              className={`w-12 p-1 text-center font-mono font-bold text-xl rounded-lg border ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30`}
+                            />
                           </div>
                         </div>
 
@@ -2950,7 +2973,12 @@ export default function App() {
                               className="flex-1"
                               style={{ accentColor: getSolidColor(state.settings.theme.valueBarColor) }}
                             />
-                            <span className="font-mono font-bold text-2xl w-16 text-right">{shiftGoal.valueGoal}</span>
+                            <input 
+                              type="number"
+                              value={shiftGoal.valueGoal}
+                              onChange={(e) => updateShiftGoal(shift, 'valueGoal', parseInt(e.target.value) || 0)}
+                              className={`w-16 p-1 text-center font-mono font-bold text-xl rounded-lg border ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-black/5 border-black/10 text-black'} focus:outline-none focus:border-white/30`}
+                            />
                           </div>
                         </div>
                       </div>
